@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Подсчет коробок</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    th, td {
+      border: 1px solid #dee2e6;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background-color: #343a40;
+      color: white;
+    }
+    input {
+      width: 60%;
+      padding: 5px;
+      text-align: center;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Подсчет коробок</h1>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Объем</th>
+        <th>Счет</th>
+        <th>Итого ШТ</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>0.5 кг</td>
+        <td><input type="text" id="box1" oninput="updateTotal()"></td>
+        <td><span id="total1">0</span></td>
+      </tr>
+      <tr>
+        <td>0.5 квадрат</td>
+        <td><input type="text" id="box2" oninput="updateTotal()"></td>
+        <td><span id="total2">0</span></td>
+      </tr>
+      <tr>
+        <td>1 кг стандарт</td>
+        <td><input type="text" id="box3" oninput="updateTotal()"></td>
+        <td><span id="total3">0</span></td>
+      </tr>
+      <tr>
+        <td>1 кг плоский</td>
+        <td><input type="text" id="box4" oninput="updateTotal()"></td>
+        <td><span id="total4">0</span></td>
+      </tr>
+      <tr>
+        <td>2 кг квадрат</td>
+        <td><input type="text" id="box5" oninput="updateTotal()"></td>
+        <td><span id="total5">0</span></td>
+      </tr>
+      <tr>
+        <td>2 кг плоские</td>
+        <td><input type="text" id="box6" oninput="updateTotal()"></td>
+        <td><span id="total6">0</span></td>
+      </tr>
+      <tr>
+        <td>5 кг</td>
+        <td><input type="text" id="box7" oninput="updateTotal()"></td>
+        <td><span id="total7">0</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <button onclick="clearFields()">Очистить поля</button>
+
+  <script>
+    // Функция для обновления итоговых значений
+    function updateTotal() {
+      let totalSum = 0;
+
+      // Перебираем все поля ввода
+      for (let i = 1; i <= 7; i++) {
+        let boxValue = document.getElementById('box' + i).value;
+        // Проверяем на пустую строку и вычисляем результат, если введено выражение
+        if (boxValue.trim() !== '') {
+          try {
+            boxValue = eval(boxValue);  // Вычисляем строку с выражением (например "5+5+5")
+            if (isNaN(boxValue)) boxValue = 0;  // Если вычисление дает не число, ставим 0
+          } catch (e) {
+            boxValue = 0;  // Если в строке ошибка, ставим 0
+          }
+        } else {
+          boxValue = 0;
+        }
+
+        document.getElementById('total' + i).textContent = boxValue; // Обновляем каждое поле "Итого ШТ"
+        totalSum += parseFloat(boxValue); // Суммируем все значения
+      }
+
+      // Сохраняем данные в LocalStorage
+      saveToLocalStorage();
+    }
+
+    // Функция для сохранения значений в LocalStorage
+    function saveToLocalStorage() {
+      for (let i = 1; i <= 7; i++) {
+        let boxValue = document.getElementById('box' + i).value;
+        localStorage.setItem('box' + i, boxValue); // Сохраняем данные каждого поля в LocalStorage
+      }
+    }
+
+    // Функция для загрузки данных из LocalStorage при открытии страницы
+    function loadFromLocalStorage() {
+      for (let i = 1; i <= 7; i++) {
+        let savedValue = localStorage.getItem('box' + i);
+        if (savedValue !== null) {
+          document.getElementById('box' + i).value = savedValue; // Загружаем сохраненные значения
+          document.getElementById('total' + i).textContent = eval(savedValue) || 0; // Также обновляем итоговые значения
+        }
+      }
+    }
+
+    // Функция для очистки данных
+    function clearFields() {
+      for (let i = 1; i <= 7; i++) {
+        document.getElementById('box' + i).value = '';
+        document.getElementById('total' + i).textContent = '0';
+        localStorage.removeItem('box' + i); // Удаляем данные из LocalStorage
+      }
+    }
+
+    // Загружаем данные из LocalStorage при загрузке страницы
+    window.onload = loadFromLocalStorage;
+  </script>
+</body>
+</html>
