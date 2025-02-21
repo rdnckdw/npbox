@@ -11,6 +11,10 @@
       padding: 20px;
       background-color: #f8f9fa;
     }
+.button-container {
+  display: flex;
+  gap: 10px; /* Отступ между кнопками */
+}
     table {
       width: 100%;
       border-collapse: collapse;
@@ -68,8 +72,10 @@
     </tbody>
   </table>
 
+<div class="button-container">
   <button onclick="clearFields()">Очистить поля</button>
   <button onclick="sendToTelegram()">Отправить в Telegram</button>
+</div>
 
   <script>
     function updateTotal() {
