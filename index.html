@@ -130,7 +130,7 @@
         return;
       }
       
-      window.location.href = `https://t.me/share/url?url=&text=${encodeURIComponent(message)}`;
+      window.location.href = `tg://msg?text=${encodeURIComponent(message)}`;
     }
 
     window.onload = loadFromLocalStorage;
