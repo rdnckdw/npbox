@@ -14,11 +14,22 @@
             color: #333;
             text-align: center;
         }
-        nav {
+        nav.navbar {
             background-color: #007aff;
             padding: 10px 0;
         }
-        nav a {
+        nav.navbar a {
+            text-decoration: none;
+            color: white;
+            margin: 0 15px;
+            font-size: 18px;
+        }
+        nav.app-navbar {
+            background-color: #007aff;
+            padding: 10px 0;
+            margin-top: 20px;
+        }
+        nav.app-navbar a {
             text-decoration: none;
             color: white;
             margin: 0 15px;
@@ -85,9 +96,10 @@
 </head>
 <body>
 
-    <nav>
-        <a href="index.html" onclick="showMain()">Главная</a>
-        <a href="other.html" onclick="showBooks()">Список книг</a>
+    <nav class="navbar">
+        <a href="#" onclick="showMain()">Главная</a>
+        <a href="#" onclick="showBooks()">Список книг</a>
+        <a href="#" onclick="showShelves()">Полки</a>
     </nav>
 
     <div id="main" style="display: block;">
@@ -119,18 +131,41 @@
         </table>
     </div>
 
+    <div id="shelves" style="display: none;">
+        <h2>Список полок</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Код полки</th>
+                    <th>Местоположение</th>
+                </tr>
+            </thead>
+            <tbody id="shelvesTableBody"></tbody>
+        </table>
+    </div>
+
     <script>
         let bookDatabase = JSON.parse(localStorage.getItem('bookDatabase')) || {};
-        
+        let shelfDatabase = JSON.parse(localStorage.getItem('shelfDatabase')) || {};
+
         function showMain() {
             document.getElementById('main').style.display = 'block';
             document.getElementById('books').style.display = 'none';
+            document.getElementById('shelves').style.display = 'none';
         }
 
         function showBooks() {
             loadBooks();
             document.getElementById('main').style.display = 'none';
             document.getElementById('books').style.display = 'block';
+            document.getElementById('shelves').style.display = 'none';
+        }
+
+        function showShelves() {
+            loadShelves();
+            document.getElementById('main').style.display = 'none';
+            document.getElementById('books').style.display = 'none';
+            document.getElementById('shelves').style.display = 'block';
         }
 
         function searchBook() {
@@ -138,7 +173,7 @@
             let foundBooks = Object.entries(bookDatabase).filter(([_, book]) => book.name.toLowerCase().includes(bookName.toLowerCase()));
 
             if (foundBooks.length > 0) {
-                alert(foundBooks.map(([_, book]) => `Книга: ${book.name}, Код полки: ${book.shelfCode}`).join("\n"));
+                alert(foundBooks.map(([_, book]) => `Книга: ${book.name}, Код полки: ${book.shelfCode}, Комментарий: ${book.comment}`).join("\n"));
             } else {
                 alert("Книга не найдена.");
             }
@@ -166,7 +201,7 @@
                 alert(`Сканирован штрихкод полки: ${barcode}`);
                 let booksOnShelf = Object.entries(bookDatabase).filter(([_, book]) => book.shelfCode === barcode);
                 if (booksOnShelf.length > 0) {
-                    alert(booksOnShelf.map(([_, book]) => `Книга: ${book.name}, Код полки: ${book.shelfCode}`).join("\n"));
+                    alert(booksOnShelf.map(([_, book]) => `Книга: ${book.name}, Код полки: ${book.shelfCode}, Комментарий: ${book.comment}`).join("\n"));
                 } else {
                     alert("На этой полке нет книг.");
                 }
@@ -235,6 +270,18 @@
             });
         }
 
+        function loadShelves() {
+            let tableBody = document.getElementById("shelvesTableBody");
+            tableBody.innerHTML = "";
+            Object.entries(shelfDatabase).forEach(([shelfCode, location]) => {
+                let row = `<tr>
+                    <td>${shelfCode}</td>
+                    <td>${location}</td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
         function editBook(barcode) {
             let book = bookDatabase[barcode];
             let newShelfCode = prompt("Введите новый код полки", book.shelfCode);
@@ -251,6 +298,17 @@
             delete bookDatabase[barcode];
             localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
             loadBooks();
+        }
+
+        function addShelf(shelfCode, location) {
+            shelfDatabase[shelfCode] = location;
+            localStorage.setItem('shelfDatabase', JSON.stringify(shelfDatabase));
+            loadShelves();
+        }
+
+        function stopScanner() {
+            Quagga.stop();
+            document.getElementById("scanner-container").style.display = "none";
         }
     </script>
 
