@@ -80,6 +80,18 @@
         }
     </style>
     <script>
+        let bookDatabase = JSON.parse(localStorage.getItem('bookDatabase')) || {};
+
+        function searchBook() {
+            let bookName = document.getElementById("bookName").value.trim();
+            let found = Object.entries(bookDatabase).find(([_, book]) => book.name === bookName);
+            if (found) {
+                alert(`Книга найдена! Место хранения: ${found[1].location}`);
+            } else {
+                alert("Книга не найдена.");
+            }
+        }
+
         function scanBarcode() {
             document.getElementById("scanner-container").style.display = "block";
             Quagga.init({
@@ -102,25 +114,62 @@
             Quagga.onDetected(function(result) {
                 Quagga.stop();
                 document.getElementById("scanner-container").style.display = "none";
-                alert("Штрихкод: " + result.codeResult.code);
+                let barcode = result.codeResult.code;
+                processBarcode(barcode);
+            });
+        }
+
+        function processBarcode(barcode) {
+            if (bookDatabase[barcode]) {
+                alert(`Книга: ${bookDatabase[barcode].name}\nМесто: ${bookDatabase[barcode].location}`);
+            } else {
+                let newBookName = prompt("Введите название книги");
+                let newLocation = prompt("Введите место хранения");
+                if (newBookName && newLocation) {
+                    bookDatabase[barcode] = { name: newBookName, location: newLocation };
+                    localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
+                    alert("Книга добавлена в базу данных!");
+                }
+            }
+        }
+
+        function saveToCSV() {
+            let csvContent = "Штрихкод,Название,Место хранения\n";
+            Object.entries(bookDatabase).forEach(([barcode, book]) => {
+                csvContent += `${barcode},${book.name},${book.location}\n`;
+            });
+            let blob = new Blob([csvContent], { type: "text/csv" });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "books.csv";
+            link.click();
+        }
+
+        function loadBooks() {
+            let table = document.getElementById("bookTableBody");
+            table.innerHTML = "";
+            Object.entries(bookDatabase).forEach(([barcode, book]) => {
+                let row = `<tr><td>${barcode}</td><td>${book.name}</td><td>${book.location}</td></tr>`;
+                table.innerHTML += row;
             });
         }
     </script>
 </head>
 <body>
- <nav class="navbar">
-    <a href="index.html" class="nav-link">Коробки НП</a>
-    <a href="other.html" class="nav-link active">Другое</a>
+  <nav class="navbar">
+    <a href="index.html" class="nav-link active">Коробки НП</a>
+    <a href="other.html" class="nav-link">Другое</a>
   </nav>
+
     <nav>
         <a href="#" onclick="document.getElementById('main').style.display='block'; document.getElementById('books').style.display='none';">Главная</a>
-        <a href="#" onclick="document.getElementById('main').style.display='none'; document.getElementById('books').style.display='block';">Список книг</a>
+        <a href="#" onclick="document.getElementById('main').style.display='none'; document.getElementById('books').style.display='block'; loadBooks();">Список книг</a>
     </nav>
     
     <div id="main">
         <h2>Поиск книги</h2>
         <input type="text" id="bookName" placeholder="Введите название книги">
-        <button onclick="alert('Функция поиска пока не реализована')">Поиск</button>
+        <button onclick="searchBook()">Поиск</button>
         <br><br>
         <button onclick="scanBarcode()">Сканировать</button>
         <div id="scanner-container">
@@ -130,8 +179,7 @@
     
     <div id="books" style="display: none;">
         <h2>Список книг</h2>
-        <input type="file" accept=".csv">
-        <button onclick="alert('Функция добавления пока не реализована')">Добавить книгу</button>
+        <button onclick="saveToCSV()">Сохранить в CSV</button>
         <table>
             <thead>
                 <tr>
@@ -140,9 +188,7 @@
                     <th>Место хранения</th>
                 </tr>
             </thead>
-            <tbody id="bookTableBody">
-                <tr><td>123456</td><td>Пример книги</td><td>Полка 1</td></tr>
-            </tbody>
+            <tbody id="bookTableBody"></tbody>
         </table>
     </div>
 </body>
