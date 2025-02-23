@@ -6,47 +6,95 @@
   <title>Коробки НП</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       margin: 0;
-      padding: 20px;
-      background-color: #f8f9fa;
+      padding: 30px;
+      background-color: #f0f4f8;
+      color: #333;
     }
-    .button-container {
-      display: flex;
-      gap: 10px; /* Отступ между кнопками */
+
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      color: #333;
+      margin-bottom: 30px;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
+
     th, td {
-      border: 1px solid #dee2e6;
-      padding: 10px;
+      padding: 12px 20px;
       text-align: center;
+      font-size: 16px;
     }
+
     th {
-      background-color: #343a40;
+      background-color: #007aff;
       color: white;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
     }
+
+    td {
+      background-color: #f8f9fa;
+    }
+
     input {
-      width: 80%;
-      padding: 5px;
-      text-align: center;
+      width: 90%;
+      padding: 8px;
+      border-radius: 8px;
       border: 1px solid #ccc;
+      font-size: 16px;
+      text-align: center;
+      transition: border-color 0.3s;
     }
+
+    input:focus {
+      outline: none;
+      border-color: #007aff;
+    }
+
+    .button-container {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
     button {
-      background-color: #007bff;
+      background-color: #007aff;
       color: white;
-      padding: 10px 20px;
+      padding: 12px 25px;
       border: none;
-      border-radius: 5px;
+      border-radius: 30px;
       cursor: pointer;
       font-size: 16px;
-      margin-right: 10px;
+      transition: background-color 0.3s;
     }
+
     button:hover {
-      background-color: #0056b3;
+      background-color: #0051a1;
+    }
+
+    button:active {
+      background-color: #003b6c;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .total {
+      font-weight: bold;
+      color: #333;
     }
   </style>
 </head>
@@ -62,20 +110,20 @@
       </tr>
     </thead>
     <tbody id="table-body">
-      <tr><td>0.5 кг</td><td><input type="tel" inputmode="tel" id="box1" oninput="updateTotal()"></td><td><span id="total1">0</span></td></tr>
-      <tr><td>0.5 квадрат</td><td><input type="tel" inputmode="tel" id="box2" oninput="updateTotal()"></td><td><span id="total2">0</span></td></tr>
-      <tr><td>1 кг стандарт</td><td><input type="tel" inputmode="tel" id="box3" oninput="updateTotal()"></td><td><span id="total3">0</span></td></tr>
-      <tr><td>1 кг плоский</td><td><input type="tel" inputmode="tel" id="box4" oninput="updateTotal()"></td><td><span id="total4">0</span></td></tr>
-      <tr><td>2 кг квадрат</td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="total5">0</span></td></tr>
-      <tr><td>2 кг плоские</td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="total6">0</span></td></tr>
-      <tr><td>5 кг</td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="total7">0</span></td></tr>
+      <tr><td>0.5 кг</td><td><input type="tel" inputmode="tel" id="box1" oninput="updateTotal()"></td><td><span id="total1" class="total">0</span></td></tr>
+      <tr><td>0.5 квадрат</td><td><input type="tel" inputmode="tel" id="box2" oninput="updateTotal()"></td><td><span id="total2" class="total">0</span></td></tr>
+      <tr><td>1 кг стандарт</td><td><input type="tel" inputmode="tel" id="box3" oninput="updateTotal()"></td><td><span id="total3" class="total">0</span></td></tr>
+      <tr><td>1 кг плоский</td><td><input type="tel" inputmode="tel" id="box4" oninput="updateTotal()"></td><td><span id="total4" class="total">0</span></td></tr>
+      <tr><td>2 кг квадрат</td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="total5" class="total">0</span></td></tr>
+      <tr><td>2 кг плоские</td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="total6" class="total">0</span></td></tr>
+      <tr><td>5 кг</td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="total7" class="total">0</span></td></tr>
     </tbody>
   </table>
 
-<div class="button-container">
-  <button onclick="clearFields()">Очистить поля</button>
-  <button onclick="sendToTelegram()">Отправить в Telegram</button>
-</div>
+  <div class="button-container">
+    <button onclick="clearFields()">Очистить поля</button>
+    <button onclick="sendToTelegram()">Отправить в Telegram</button>
+  </div>
 
   <script>
     function updateTotal() {
