@@ -5,6 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Коробки НП</title>
   <style>
+    .navbar {
+      display: flex;
+      background: #007bff;
+      padding: 10px;
+    }
+    .nav-link {
+      color: white;
+      text-decoration: none;
+      padding: 10px 15px;
+      font-size: 18px;
+    }
+    .nav-link.active, .nav-link:hover {
+      background: #0056b3;
+    }
+    .navbar {
+      display: flex;
+      background: white;
+      padding: 10px;
+      border-bottom: 1px solid #ccc;
+    }
+    .nav-link {
+      color: black;
+      text-decoration: none;
+      padding: 10px 15px;
+      font-size: 18px;
+    }
+    .nav-link.active, .nav-link:hover {
+      background: #f0f0f0;
+    }
+    .tab-button {
+      flex: 1;
+      padding: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .tab-button.active {
+      background: #0056b3;
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
     body {
       font-family: Arial, sans-serif;
       margin: 0;
@@ -51,6 +98,15 @@
   </style>
 </head>
 <body>
+  <nav class="navbar">
+    <a href="index.html" class="nav-link active">Коробки НП</a>
+    <a href="other.html" class="nav-link">Другое</a>
+  </nav>
+  
+
+  <div id="counting" class="tab-content active">
+  <h1>Коробки НП</h1>
+  
   <table>
     <thead>
       <tr>
@@ -76,6 +132,20 @@
 </div>
 
   <script>
+    function openTab(event, tabId) {
+      let tabs = document.querySelectorAll('.tab-content');
+      let buttons = document.querySelectorAll('.tab-button');
+      
+      tabs.forEach(tab => tab.style.display = 'none');
+      buttons.forEach(btn => btn.classList.remove('active'));
+      
+      document.getElementById(tabId).style.display = 'block';
+      event.currentTarget.classList.add('active');
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+      document.getElementById('counting').style.display = 'block';
+    });
     function updateTotal() {
       for (let i = 1; i <= 7; i++) {
         let boxValue = document.getElementById('box' + i).value;
@@ -139,6 +209,12 @@
 
     window.onload = loadFromLocalStorage;
   </script>
+    </div>
+
+  <div id="development" class="tab-content" style="display:none;">
+    <h2>Функция в разработке</h2>
+  </div>
+
   <div id="addons">
     <!-- Здесь можно добавлять дополнительные аддоны -->
   </div>
