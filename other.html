@@ -119,17 +119,48 @@
             } else {
                 let newBookName = prompt("Введите название книги");
                 let newLocation = prompt("Введите место хранения");
+
                 if (newBookName && newLocation) {
-                    bookDatabase[barcode] = { name: newBookName, location: newLocation };
-                    localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
-                    loadBooks();
+                    let shelfCode = prompt("Выберите метод ввода кода полки:\n1. Введите вручную\n2. Просканируйте штрихкод");
+                    if (shelfCode === "1") {
+                        let manualShelfCode = prompt("Введите код полки вручную");
+                        if (manualShelfCode) {
+                            bookDatabase[barcode] = { name: newBookName, location: newLocation, shelfCode: manualShelfCode };
+                            localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
+                            loadBooks();
+                        }
+                    } else if (shelfCode === "2") {
+                        alert("Пожалуйста, сканируйте код полки.");
+                        startShelfCodeScan(barcode, newBookName, newLocation);
+                    } else {
+                        alert("Неверный выбор, попробуйте снова.");
+                    }
                 }
             }
         }
 
+        function startShelfCodeScan(barcode, newBookName, newLocation) {
+            document.getElementById("scanner-container").style.display = "block";
+            Quagga.init({
+                inputStream: { name: "Live", type: "LiveStream", target: document.querySelector("#scanner") },
+                decoder: { readers: ["ean_reader", "code_128_reader"] }
+            }, function(err) {
+                if (!err) Quagga.start();
+            });
+
+            Quagga.onDetected(function(result) {
+                Quagga.stop();
+                document.getElementById("scanner-container").style.display = "none";
+                let shelfBarcode = result.codeResult.code;
+                bookDatabase[barcode] = { name: newBookName, location: newLocation, shelfCode: shelfBarcode };
+                localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
+                loadBooks();
+            });
+        }
+
         function saveToCSV() {
-            let csvContent = "Штрихкод,Название,Место хранения\n" +
-                Object.entries(bookDatabase).map(([barcode, book]) => `${barcode},${book.name},${book.location}`).join("\n");
+            let csvContent = "Штрихкод,Название,Место хранения,Код полки\n" +
+                Object.entries(bookDatabase).map(([barcode, book]) => `${barcode},${book.name},${book.location},${book.shelfCode}`).join("\n");
             let link = document.createElement("a");
             link.href = URL.createObjectURL(new Blob([csvContent], { type: "text/csv" }));
             link.download = "books.csv";
@@ -144,6 +175,7 @@
                     <td>${barcode}</td>
                     <td contenteditable="true" onblur="editBook('${barcode}', this.innerText, 'name')">${book.name}</td>
                     <td contenteditable="true" onblur="editBook('${barcode}', this.innerText, 'location')">${book.location}</td>
+                    <td contenteditable="true" onblur="editBook('${barcode}', this.innerText, 'shelfCode')">${book.shelfCode}</td>
                     <td><span class="delete-btn" onclick="deleteBook('${barcode}')">🗑</span></td>
                 </tr>`;
                 table.innerHTML += row;
@@ -163,6 +195,10 @@
     </script>
 </head>
 <body>
+  <nav class="navbar">
+    <a href="index.html" class="nav-link active">Коробки НП</a>
+    <a href="other.html" class="nav-link">Другое</a>
+  </nav>
     <nav>
         <a href="#" onclick="document.getElementById('main').style.display='block'; document.getElementById('books').style.display='none';">Главная</a>
         <a href="#" onclick="document.getElementById('main').style.display='none'; document.getElementById('books').style.display='block'; loadBooks();">Список книг</a>
@@ -184,7 +220,7 @@
         <h2>Список книг</h2>
         <button onclick="saveToCSV()">Сохранить в CSV</button>
         <table>
-            <thead><tr><th>Штрихкод</th><th>Название</th><th>Место хранения</th><th>Действия</th></tr></thead>
+            <thead><tr><th>Штрихкод</th><th>Название</th><th>Место хранения</th><th>Код полки</th><th>Действия</th></tr></thead>
             <tbody id="bookTableBody"></tbody>
         </table>
     </div>
