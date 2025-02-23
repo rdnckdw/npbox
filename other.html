@@ -3,127 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управление книгами</title>
+    <title>Склад книг</title>
     <script src="https://unpkg.com/quagga/dist/quagga.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; }
-        .navbar { background: #007aff; padding: 10px; color: white; }
-        .nav-link { color: white; margin: 0 15px; text-decoration: none; }
-        .tab-container { margin-top: 20px; }
-        .tab { display: none; }
-        .tab.active { display: block; }
-        table { width: 90%; margin: 20px auto; border-collapse: collapse; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        th { background: #007aff; color: white; }
-        .scanner-container { display: none; }
+        body { font-family: Arial, sans-serif; background-color: #f8f8f8; text-align: center; }
+        .container { max-width: 600px; margin: auto; padding: 20px; background: #fff; border-radius: 10px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        .hidden { display: none; }
+        input, button { margin: 10px; padding: 10px; font-size: 16px; }
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; }
+        th, td { padding: 10px; border: 1px solid #ddd; }
+        th { background-color: #007aff; color: white; }
     </style>
 </head>
 <body>
-    <nav class="navbar">
-        <a href="index.html" class="nav-link">Коробки НП</a>
-        <a href="other.html" class="nav-link">Другое</a>
-    </nav>
-    
     <nav>
-        <button onclick="switchTab('main')">Главная</button>
-        <button onclick="switchTab('books')">Список книг</button>
-        <button onclick="switchTab('shelves')">Полки</button>
+        <a href="#" onclick="showTab('main')">Главная</a>
+        <a href="#" onclick="showTab('books')">Список книг</a>
+        <a href="#" onclick="showTab('shelves')">Полки</a>
     </nav>
     
-    <div id="main" class="tab active">
-        <h2>Поиск книги</h2>
-        <input type="text" id="searchInput" placeholder="Введите название или штрихкод">
-        <button onclick="searchBook()">Поиск</button>
-        <button onclick="scanBarcode()">Сканировать</button>
-        <div id="scanner-container" class="scanner-container">
+    <div id="main" class="container">
+        <h2>Поиск</h2>
+        <input type="text" id="searchQuery" placeholder="Введите название или код полки">
+        <button onclick="searchItem()">Поиск</button>
+        <button onclick="startScanner()">Сканировать</button>
+        <div id="scanner-container" class="hidden">
             <video id="scanner"></video>
         </div>
-        <table id="searchResults"></table>
-    </div>
-    
-    <div id="books" class="tab">
-        <h2>Список книг</h2>
-        <button onclick="saveToCSV()">Сохранить в CSV</button>
-        <input type="file" id="csvUpload" onchange="loadFromCSV(event)">
-        <table>
-            <thead><tr><th>Название</th><th>Полка</th><th>Комментарий</th><th>Действия</th></tr></thead>
-            <tbody id="bookTableBody"></tbody>
+        <table id="searchResults" class="hidden">
+            <thead><tr><th>Название</th><th>Код полки</th><th>Комментарий</th></tr></thead>
+            <tbody></tbody>
         </table>
     </div>
     
-    <div id="shelves" class="tab">
-        <h2>Полки</h2>
-        <button onclick="scanShelf()">Сканировать полку</button>
+    <div id="books" class="container hidden">
+        <h2>Список книг</h2>
+        <button onclick="exportCSV()">Сохранить CSV</button>
+        <input type="file" id="csvFile" onchange="importCSV()">
         <table>
-            <thead><tr><th>Код</th><th>Местоположение</th><th>Действия</th></tr></thead>
-            <tbody id="shelvesTableBody"></tbody>
+            <thead><tr><th>Название</th><th>Код полки</th><th>Комментарий</th><th>Действия</th></tr></thead>
+            <tbody id="bookTable"></tbody>
+        </table>
+    </div>
+    
+    <div id="shelves" class="container hidden">
+        <h2>Полки</h2>
+        <button onclick="startScanner(true)">Сканировать полку</button>
+        <table>
+            <thead><tr><th>Код полки</th><th>Комментарий</th><th>Действия</th></tr></thead>
+            <tbody id="shelfTable"></tbody>
         </table>
     </div>
     
     <script>
-        let bookDatabase = JSON.parse(localStorage.getItem('bookDatabase')) || {};
-        let shelfDatabase = JSON.parse(localStorage.getItem('shelfDatabase')) || {};
+        let database = JSON.parse(localStorage.getItem('database')) || { books: [], shelves: [] };
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
+        function showTab(tab) {
+            document.querySelectorAll('.container').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tab).classList.remove('hidden');
         }
 
-        function searchBook() {
-            let query = document.getElementById("searchInput").value.trim();
-            let results = Object.entries(bookDatabase).filter(([barcode, book]) => 
-                barcode.includes(query) || book.name.includes(query));
+        function searchItem() {
+            let query = document.getElementById("searchQuery").value.trim().toLowerCase();
+            let results = database.books.filter(book => book.name.toLowerCase().includes(query) || book.shelf.includes(query));
             let table = document.getElementById("searchResults");
-            table.innerHTML = "<tr><th>Название</th><th>Полка</th><th>Комментарий</th></tr>" + 
-                results.map(([_, book]) => `<tr><td>${book.name}</td><td>${book.shelfCode}</td><td>${book.comment}</td></tr>`).join('');
+            let tbody = table.querySelector("tbody");
+            tbody.innerHTML = "";
+            results.forEach(book => {
+                let row = `<tr><td>${book.name}</td><td>${book.shelf}</td><td>${book.comment}</td></tr>`;
+                tbody.innerHTML += row;
+            });
+            table.classList.remove("hidden");
         }
 
-        function scanBarcode() {
-            document.getElementById("scanner-container").style.display = "block";
+        function startScanner(forShelves = false) {
+            document.getElementById("scanner-container").classList.remove("hidden");
             Quagga.init({
-                inputStream: { type: "LiveStream", target: document.querySelector("#scanner") },
+                inputStream: { name: "Live", type: "LiveStream", target: document.querySelector("#scanner") },
                 decoder: { readers: ["ean_reader", "code_128_reader"] }
-            }, err => { if (!err) Quagga.start(); });
-            Quagga.onDetected(result => {
+            }, function(err) {
+                if (!err) Quagga.start();
+            });
+            Quagga.onDetected(function(result) {
                 let barcode = result.codeResult.code;
                 Quagga.stop();
-                document.getElementById("scanner-container").style.display = "none";
-                processBarcode(barcode);
+                document.getElementById("scanner-container").classList.add("hidden");
+                if (forShelves) processShelf(barcode);
+                else processBook(barcode);
             });
         }
 
-        function processBarcode(barcode) {
-            if (bookDatabase[barcode]) {
-                alert(`Книга найдена! Полка: ${bookDatabase[barcode].shelfCode}\nКомментарий: ${bookDatabase[barcode].comment}`);
+        function processBook(barcode) {
+            let book = database.books.find(b => b.barcode === barcode);
+            if (book) {
+                alert(`Книга: ${book.name}\nПолка: ${book.shelf}\nКомментарий: ${book.comment}`);
             } else {
                 let name = prompt("Введите название книги");
-                let shelfCode = prompt("Введите код полки");
-                let comment = prompt("Введите комментарий");
-                bookDatabase[barcode] = { name, shelfCode, comment };
-                localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
-                loadBooks();
+                let shelf = prompt("Введите код полки");
+                let comment = prompt("Комментарий о расположении");
+                if (name && shelf) {
+                    database.books.push({ barcode, name, shelf, comment });
+                    saveDatabase();
+                }
             }
         }
 
-        function scanShelf() {
-            let barcode = prompt("Введите код полки");
-            if (!shelfDatabase[barcode]) {
-                let location = prompt("Введите местоположение полки");
-                shelfDatabase[barcode] = location;
-                localStorage.setItem('shelfDatabase', JSON.stringify(shelfDatabase));
+        function processShelf(barcode) {
+            let shelf = database.shelves.find(s => s.code === barcode);
+            if (shelf) {
+                alert(`Полка: ${shelf.code}\nКомментарий: ${shelf.comment}`);
             } else {
-                alert(`Книги на полке ${barcode}:\n` + 
-                    Object.values(bookDatabase).filter(book => book.shelfCode === barcode).map(book => book.name).join("\n"));
+                let comment = prompt("Введите комментарий к полке");
+                if (comment) {
+                    database.shelves.push({ code: barcode, comment });
+                    saveDatabase();
+                }
             }
         }
 
-        function saveToCSV() {
-            let csv = "type,barcode,name,shelfCode,comment\n" + 
-                Object.entries(bookDatabase).map(([b, book]) => `Книга,${b},${book.name},${book.shelfCode},${book.comment}`).join("\n") + "\n" +
-                Object.entries(shelfDatabase).map(([b, loc]) => `Полка,${b},${loc},,`).join("\n");
+        function saveDatabase() {
+            localStorage.setItem('database', JSON.stringify(database));
+        }
+
+        function exportCSV() {
+            let csv = "Название,Код полки,Комментарий\n" +
+                database.books.map(b => `${b.name},${b.shelf},${b.comment}`).join("\n") +
+                "\n\nПолки\nКод,Комментарий\n" +
+                database.shelves.map(s => `${s.code},${s.comment}`).join("\n");
+            let blob = new Blob([csv], { type: "text/csv" });
             let link = document.createElement("a");
-            link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-            link.download = "data.csv";
+            link.href = URL.createObjectURL(blob);
+            link.download = "storage.csv";
             link.click();
         }
     </script>
