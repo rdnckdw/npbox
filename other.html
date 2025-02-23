@@ -14,6 +14,12 @@
             color: #333;
             text-align: center;
         }
+  .navbar {
+      display: flex;
+      background: #ffffff;
+      padding: 15px;
+      border-bottom: 1px solid #d1d1d6;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         h2 {
             font-weight: 600;
             color: #000;
@@ -96,7 +102,24 @@
             alert(found ? `Книга найдена! Место хранения: ${found[1].location}` : "Книга не найдена.");
         }
 
-        function scanBarcode() {
+        function scanBarcodeForShelf() {
+            document.getElementById("scanner-container").style.display = "block";
+            Quagga.init({
+                inputStream: { name: "Live", type: "LiveStream", target: document.querySelector("#scanner") },
+                decoder: { readers: ["ean_reader", "code_128_reader"] }
+            }, function(err) {
+                if (!err) Quagga.start();
+            });
+
+            Quagga.onDetected(function(result) {
+                Quagga.stop();
+                document.getElementById("scanner-container").style.display = "none";
+                let shelfBarcode = result.codeResult.code;
+                document.getElementById("shelfCodeInput").value = shelfBarcode;
+            });
+        }
+
+        function scanBarcodeForBook() {
             document.getElementById("scanner-container").style.display = "block";
             Quagga.init({
                 inputStream: { name: "Live", type: "LiveStream", target: document.querySelector("#scanner") },
@@ -119,43 +142,14 @@
             } else {
                 let newBookName = prompt("Введите название книги");
                 let newLocation = prompt("Введите место хранения");
+                let shelfCode = document.getElementById("shelfCodeInput").value || prompt("Введите код полки вручную");
 
-                if (newBookName && newLocation) {
-                    let shelfCode = prompt("Выберите метод ввода кода полки:\n1. Введите вручную\n2. Просканируйте штрихкод");
-                    if (shelfCode === "1") {
-                        let manualShelfCode = prompt("Введите код полки вручную");
-                        if (manualShelfCode) {
-                            bookDatabase[barcode] = { name: newBookName, location: newLocation, shelfCode: manualShelfCode };
-                            localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
-                            loadBooks();
-                        }
-                    } else if (shelfCode === "2") {
-                        alert("Пожалуйста, сканируйте код полки.");
-                        startShelfCodeScan(barcode, newBookName, newLocation);
-                    } else {
-                        alert("Неверный выбор, попробуйте снова.");
-                    }
+                if (newBookName && newLocation && shelfCode) {
+                    bookDatabase[barcode] = { name: newBookName, location: newLocation, shelfCode: shelfCode };
+                    localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
+                    loadBooks();
                 }
             }
-        }
-
-        function startShelfCodeScan(barcode, newBookName, newLocation) {
-            document.getElementById("scanner-container").style.display = "block";
-            Quagga.init({
-                inputStream: { name: "Live", type: "LiveStream", target: document.querySelector("#scanner") },
-                decoder: { readers: ["ean_reader", "code_128_reader"] }
-            }, function(err) {
-                if (!err) Quagga.start();
-            });
-
-            Quagga.onDetected(function(result) {
-                Quagga.stop();
-                document.getElementById("scanner-container").style.display = "none";
-                let shelfBarcode = result.codeResult.code;
-                bookDatabase[barcode] = { name: newBookName, location: newLocation, shelfCode: shelfBarcode };
-                localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
-                loadBooks();
-            });
         }
 
         function saveToCSV() {
@@ -165,6 +159,29 @@
             link.href = URL.createObjectURL(new Blob([csvContent], { type: "text/csv" }));
             link.download = "books.csv";
             link.click();
+        }
+
+        function loadFromCSV(event) {
+            const file = event.target.files[0];
+            if (file && file.name.endsWith(".csv")) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    const rows = content.split("\n");
+                    rows.slice(1).forEach(row => {
+                        const [barcode, name, location, shelfCode] = row.split(",");
+                        if (barcode && name && location && shelfCode) {
+                            bookDatabase[barcode] = { name, location, shelfCode };
+                        }
+                    });
+                    localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
+                    loadBooks();
+                    alert("Данные успешно загружены!");
+                };
+                reader.readAsText(file);
+            } else {
+                alert("Пожалуйста, выберите файл CSV.");
+            }
         }
 
         function loadBooks() {
@@ -210,7 +227,7 @@
             <input type="text" id="bookName" placeholder="Введите название книги">
             <button onclick="searchBook()">Поиск</button>
         </div>
-        <button onclick="scanBarcode()">Сканировать</button>
+        <button onclick="scanBarcodeForBook()">Сканировать книгу</button>
         <div id="scanner-container">
             <video id="scanner"></video>
         </div>
@@ -219,6 +236,12 @@
     <div id="books" style="display: none;">
         <h2>Список книг</h2>
         <button onclick="saveToCSV()">Сохранить в CSV</button>
+        <input type="file" id="fileInput" accept=".csv" onchange="loadFromCSV(event)">
+        <div>
+            <label for="shelfCodeInput">Введите код полки:</label>
+            <input type="text" id="shelfCodeInput" placeholder="Введите код полки вручную">
+            <button onclick="scanBarcodeForShelf()">Сканировать код полки</button>
+        </div>
         <table>
             <thead><tr><th>Штрихкод</th><th>Название</th><th>Место хранения</th><th>Код полки</th><th>Действия</th></tr></thead>
             <tbody id="bookTableBody"></tbody>
