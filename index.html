@@ -11,10 +11,10 @@
       padding: 20px;
       background-color: #f8f9fa;
     }
-.button-container {
-  display: flex;
-  gap: 10px; /* Отступ между кнопками */
-}
+    .button-container {
+      display: flex;
+      gap: 10px; /* Отступ между кнопками */
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -62,13 +62,13 @@
       </tr>
     </thead>
     <tbody id="table-body">
-      <tr><td>0.5 кг</td><td><input type="text" id="box1" oninput="updateTotal()"></td><td><span id="total1">0</span></td></tr>
-      <tr><td>0.5 квадрат</td><td><input type="text" id="box2" oninput="updateTotal()"></td><td><span id="total2">0</span></td></tr>
-      <tr><td>1 кг стандарт</td><td><input type="text" id="box3" oninput="updateTotal()"></td><td><span id="total3">0</span></td></tr>
-      <tr><td>1 кг плоский</td><td><input type="text" id="box4" oninput="updateTotal()"></td><td><span id="total4">0</span></td></tr>
-      <tr><td>2 кг квадрат</td><td><input type="text" id="box5" oninput="updateTotal()"></td><td><span id="total5">0</span></td></tr>
-      <tr><td>2 кг плоские</td><td><input type="text" id="box6" oninput="updateTotal()"></td><td><span id="total6">0</span></td></tr>
-      <tr><td>5 кг</td><td><input type="text" id="box7" oninput="updateTotal()"></td><td><span id="total7">0</span></td></tr>
+      <tr><td>0.5 кг</td><td><input type="number" inputmode="numeric" id="box1" oninput="updateTotal()"></td><td><span id="total1">0</span></td></tr>
+      <tr><td>0.5 квадрат</td><td><input type="number" inputmode="numeric" id="box2" oninput="updateTotal()"></td><td><span id="total2">0</span></td></tr>
+      <tr><td>1 кг стандарт</td><td><input type="number" inputmode="numeric" id="box3" oninput="updateTotal()"></td><td><span id="total3">0</span></td></tr>
+      <tr><td>1 кг плоский</td><td><input type="number" inputmode="numeric" id="box4" oninput="updateTotal()"></td><td><span id="total4">0</span></td></tr>
+      <tr><td>2 кг квадрат</td><td><input type="number" inputmode="numeric" id="box5" oninput="updateTotal()"></td><td><span id="total5">0</span></td></tr>
+      <tr><td>2 кг плоские</td><td><input type="number" inputmode="numeric" id="box6" oninput="updateTotal()"></td><td><span id="total6">0</span></td></tr>
+      <tr><td>5 кг</td><td><input type="number" inputmode="numeric" id="box7" oninput="updateTotal()"></td><td><span id="total7">0</span></td></tr>
     </tbody>
   </table>
 
