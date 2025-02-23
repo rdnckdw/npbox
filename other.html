@@ -43,13 +43,17 @@
             background: #005ecb;
         }
         input {
-            width: 80%;
-            max-width: 400px;
             padding: 10px;
-            margin: 10px 0;
             border: 1px solid #ccc;
             border-radius: 10px;
             font-size: 16px;
+        }
+        .search-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
         }
         table {
             width: 90%;
@@ -68,6 +72,10 @@
             background: #007aff;
             color: white;
         }
+        .edit-btn, .delete-btn {
+            cursor: pointer;
+            margin: 5px;
+        }
         #scanner-container {
             width: 100%;
             height: auto;
@@ -85,30 +93,16 @@
         function searchBook() {
             let bookName = document.getElementById("bookName").value.trim();
             let found = Object.entries(bookDatabase).find(([_, book]) => book.name === bookName);
-            if (found) {
-                alert(`Книга найдена! Место хранения: ${found[1].location}`);
-            } else {
-                alert("Книга не найдена.");
-            }
+            alert(found ? `Книга найдена! Место хранения: ${found[1].location}` : "Книга не найдена.");
         }
 
         function scanBarcode() {
             document.getElementById("scanner-container").style.display = "block";
             Quagga.init({
-                inputStream: {
-                    name: "Live",
-                    type: "LiveStream",
-                    target: document.querySelector("#scanner")
-                },
-                decoder: {
-                    readers: ["ean_reader", "code_128_reader"]
-                }
+                inputStream: { name: "Live", type: "LiveStream", target: document.querySelector("#scanner") },
+                decoder: { readers: ["ean_reader", "code_128_reader"] }
             }, function(err) {
-                if (err) {
-                    console.error(err);
-                    return;
-                }
-                Quagga.start();
+                if (!err) Quagga.start();
             });
 
             Quagga.onDetected(function(result) {
@@ -128,19 +122,16 @@
                 if (newBookName && newLocation) {
                     bookDatabase[barcode] = { name: newBookName, location: newLocation };
                     localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
-                    alert("Книга добавлена в базу данных!");
+                    loadBooks();
                 }
             }
         }
 
         function saveToCSV() {
-            let csvContent = "Штрихкод,Название,Место хранения\n";
-            Object.entries(bookDatabase).forEach(([barcode, book]) => {
-                csvContent += `${barcode},${book.name},${book.location}\n`;
-            });
-            let blob = new Blob([csvContent], { type: "text/csv" });
+            let csvContent = "Штрихкод,Название,Место хранения\n" +
+                Object.entries(bookDatabase).map(([barcode, book]) => `${barcode},${book.name},${book.location}`).join("\n");
             let link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
+            link.href = URL.createObjectURL(new Blob([csvContent], { type: "text/csv" }));
             link.download = "books.csv";
             link.click();
         }
@@ -149,18 +140,29 @@
             let table = document.getElementById("bookTableBody");
             table.innerHTML = "";
             Object.entries(bookDatabase).forEach(([barcode, book]) => {
-                let row = `<tr><td>${barcode}</td><td>${book.name}</td><td>${book.location}</td></tr>`;
+                let row = `<tr>
+                    <td>${barcode}</td>
+                    <td contenteditable="true" onblur="editBook('${barcode}', this.innerText, 'name')">${book.name}</td>
+                    <td contenteditable="true" onblur="editBook('${barcode}', this.innerText, 'location')">${book.location}</td>
+                    <td><span class="delete-btn" onclick="deleteBook('${barcode}')">🗑</span></td>
+                </tr>`;
                 table.innerHTML += row;
             });
+        }
+
+        function editBook(barcode, value, field) {
+            bookDatabase[barcode][field] = value;
+            localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
+        }
+
+        function deleteBook(barcode) {
+            delete bookDatabase[barcode];
+            localStorage.setItem('bookDatabase', JSON.stringify(bookDatabase));
+            loadBooks();
         }
     </script>
 </head>
 <body>
-  <nav class="navbar">
-    <a href="index.html" class="nav-link active">Коробки НП</a>
-    <a href="other.html" class="nav-link">Другое</a>
-  </nav>
-
     <nav>
         <a href="#" onclick="document.getElementById('main').style.display='block'; document.getElementById('books').style.display='none';">Главная</a>
         <a href="#" onclick="document.getElementById('main').style.display='none'; document.getElementById('books').style.display='block'; loadBooks();">Список книг</a>
@@ -168,9 +170,10 @@
     
     <div id="main">
         <h2>Поиск книги</h2>
-        <input type="text" id="bookName" placeholder="Введите название книги">
-        <button onclick="searchBook()">Поиск</button>
-        <br><br>
+        <div class="search-container">
+            <input type="text" id="bookName" placeholder="Введите название книги">
+            <button onclick="searchBook()">Поиск</button>
+        </div>
         <button onclick="scanBarcode()">Сканировать</button>
         <div id="scanner-container">
             <video id="scanner"></video>
@@ -181,13 +184,7 @@
         <h2>Список книг</h2>
         <button onclick="saveToCSV()">Сохранить в CSV</button>
         <table>
-            <thead>
-                <tr>
-                    <th>Штрихкод</th>
-                    <th>Название</th>
-                    <th>Место хранения</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Штрихкод</th><th>Название</th><th>Место хранения</th><th>Действия</th></tr></thead>
             <tbody id="bookTableBody"></tbody>
         </table>
     </div>
