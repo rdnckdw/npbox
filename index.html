@@ -17,18 +17,18 @@
       text-align: center;
       font-size: 1.8rem;
       color: #333;
-      margin-bottom: 20px;
+      margin-bottom: 30px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 20px;
+      margin-bottom: 30px; /* Увеличен отступ снизу */
     }
 
     th, td {
-      padding: 15px;
-      text-align: center;
+      padding: 15px 20px; /* Увеличены отступы */
+      text-align: left;
       font-size: 16px;
     }
 
@@ -46,7 +46,7 @@
 
     input {
       width: 100%;
-      padding: 8px 12px;
+      padding: 10px; /* Увеличены отступы для ввода */
       border-radius: 12px;
       border: 1px solid #ccc;
       font-size: 16px;
@@ -69,7 +69,7 @@
       display: flex;
       justify-content: center;
       gap: 20px;
-      margin-top: 30px;
+      margin-top: 40px; /* Увеличен отступ сверху */
     }
 
     button {
@@ -81,6 +81,7 @@
       cursor: pointer;
       font-size: 16px;
       transition: background-color 0.3s;
+      min-width: 160px; /* Добавлена минимальная ширина для кнопок */
     }
 
     button:hover {
@@ -95,29 +96,39 @@
       background-color: #ccc;
       cursor: not-allowed;
     }
+
+    /* Добавим стиль для контейнера таблицы, чтобы создать отступы */
+    .table-container {
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
   </style>
 </head>
 <body>
   <h1>Коробки НП</h1>
   
-  <table>
-    <thead>
-      <tr>
-        <th>Объем</th>
-        <th>Счет</th>
-        <th>Итого ШТ</th>
-      </tr>
-    </thead>
-    <tbody id="table-body">
-      <tr><td>0.5 кг</td><td><input type="tel" inputmode="tel" id="box1" oninput="updateTotal()"></td><td><span id="total1" class="total">0</span></td></tr>
-      <tr><td>0.5 квадрат</td><td><input type="tel" inputmode="tel" id="box2" oninput="updateTotal()"></td><td><span id="total2" class="total">0</span></td></tr>
-      <tr><td>1 кг стандарт</td><td><input type="tel" inputmode="tel" id="box3" oninput="updateTotal()"></td><td><span id="total3" class="total">0</span></td></tr>
-      <tr><td>1 кг плоский</td><td><input type="tel" inputmode="tel" id="box4" oninput="updateTotal()"></td><td><span id="total4" class="total">0</span></td></tr>
-      <tr><td>2 кг квадрат</td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="total5" class="total">0</span></td></tr>
-      <tr><td>2 кг плоские</td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="total6" class="total">0</span></td></tr>
-      <tr><td>5 кг</td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="total7" class="total">0</span></td></tr>
-    </tbody>
-  </table>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Объем</th>
+          <th>Счет</th>
+          <th>Итого ШТ</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+        <tr><td>0.5 кг</td><td><input type="tel" inputmode="tel" id="box1" oninput="updateTotal()"></td><td><span id="total1" class="total">0</span></td></tr>
+        <tr><td>0.5 квадрат</td><td><input type="tel" inputmode="tel" id="box2" oninput="updateTotal()"></td><td><span id="total2" class="total">0</span></td></tr>
+        <tr><td>1 кг стандарт</td><td><input type="tel" inputmode="tel" id="box3" oninput="updateTotal()"></td><td><span id="total3" class="total">0</span></td></tr>
+        <tr><td>1 кг плоский</td><td><input type="tel" inputmode="tel" id="box4" oninput="updateTotal()"></td><td><span id="total4" class="total">0</span></td></tr>
+        <tr><td>2 кг квадрат</td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="total5" class="total">0</span></td></tr>
+        <tr><td>2 кг плоские</td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="total6" class="total">0</span></td></tr>
+        <tr><td>5 кг</td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="total7" class="total">0</span></td></tr>
+      </tbody>
+    </table>
+  </div>
 
   <div class="button-container">
     <button onclick="clearFields()">Очистить поля</button>
