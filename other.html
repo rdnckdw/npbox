@@ -45,13 +45,11 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed; /* Это позволяет предотвратить вылазку содержимого за рамки */
         }
         th, td {
             padding: 8px;
             text-align: center;
             border-bottom: 1px solid #e0e0e0;
-            word-wrap: break-word; /* Слово не вылазит за границы */
         }
         th {
             background-color: #f5f5f7;
@@ -92,33 +90,25 @@
             border: 1px solid #ddd;
             display: none;
         }
-
-        /* Стиль для scrollable таблиц */
-        table.scrollable {
-            max-height: 300px; /* Максимальная высота таблицы */
-            overflow-y: auto; /* Вертикальная прокрутка */
-            display: block;
-        }
     </style>
 </head>
 <body>
  <nav class="navbar">
     <a href="index.html" class="nav-link">Коробки НП</a>
-    <a href="other.html" class="nav-link active">Другое</a>
+    <a href="other.html" class="nav-link active">ПОИСК</a>
   </nav>
     <nav class="navbar">
-        <a href="#" class="nav-link active" onclick="switchTab('scanner', this)">Сканер</a>
-        <a href="#" class="nav-link" onclick="switchTab('books', this)">Книги</a>
-        <a href="#" class="nav-link" onclick="switchTab('shelves', this)">Полки</a>
-        <a href="#" class="nav-link" onclick="switchTab('settings', this)">Настройки</a>
+        <a href="#" class="nav-link active" onclick="switchTab('scanner')">Сканер</a>
+        <a href="#" class="nav-link" onclick="switchTab('books')">Книги</a>
+        <a href="#" class="nav-link" onclick="switchTab('shelves')">Полки</a>
+        <a href="#" class="nav-link" onclick="switchTab('settings')">Настройки</a>
     </nav>
-   
+  
     <div class="container">
- <div class="card">
+             <div class="card">
             <input type="text" id="scanner-search" placeholder="Поиск по штрихкоду или названию">
             <button onclick="searchScanner()">Поиск</button>
-    </div>
-        <!-- Сканер -->
+      </div>
         <div id="scanner" class="card">
             <h2>Сканер штрих-кодов</h2>
             <video id="camera" autoplay></video>
@@ -130,7 +120,7 @@
         <div id="books" class="card hidden">
             <h3>Книги</h3>
             <input type="text" id="book-search" placeholder="Поиск по названию книги" oninput="searchBooks()">
-            <table id="books-table" class="scrollable">
+            <table id="books-table">
                 <thead>
                     <tr>
                         <th>Штрихкод</th>
@@ -148,7 +138,7 @@
         <div id="shelves" class="card hidden">
             <h3>Полки</h3>
             <input type="text" id="shelf-search" placeholder="Поиск по коду полки" oninput="searchShelves()">
-            <table id="shelves-table" class="scrollable">
+            <table id="shelves-table">
                 <thead>
                     <tr>
                         <th>Код полки</th>
@@ -165,7 +155,6 @@
             <h3>Настройки</h3>
             <button onclick="exportData()">Экспортировать в CSV</button>
             <input type="file" id="import-file" onchange="importData(event)">
-            <button onclick="importFromCSV()">Импорт из CSV</button>
         </div>
     </div>
     
@@ -174,15 +163,12 @@
         let books = JSON.parse(localStorage.getItem('books') || '[]');
         let shelves = JSON.parse(localStorage.getItem('shelves') || '[]');
         
-        function switchTab(tab, clickedLink) {
+        function switchTab(tab) {
             document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
-            document.querySelector(`#${tab}`).classList.remove('hidden');
+            document.querySelector(#${tab}).classList.remove('hidden');
             
-            // Сброс всех кнопок
             document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            
-            // Отметка активной кнопки
-            clickedLink.classList.add('active');
+            document.querySelector([onclick="switchTab('${tab}')"]).classList.add('active');
         }
         
         // Функция для начала сканирования
@@ -205,7 +191,7 @@
             if (/^\d{3}$/.test(code)) {
                 let shelf = shelves.find(s => s.code === code);
                 if (shelf) {
-                    alert(`Полка найдена: ${shelf.location}`);
+                    alert(Полка найдена: ${shelf.location});
                     alert('Книги на этой полке: ' + books.filter(b => b.shelf === shelf.code).map(b => b.name).join(', '));
                 } else {
                     let location = prompt('Введите местоположение полки:');
@@ -217,7 +203,7 @@
             } else {
                 let book = books.find(b => b.barcode === code);
                 if (book) {
-                    alert(`Книга найдена: ${book.name}, Код полки: ${book.shelf}`);
+                    alert(Книга найдена: ${book.name}, Код полки: ${book.shelf});
                 } else {
                     let name = prompt('Введите название книги:');
                     let shelfCode = prompt('Введите код полки:');
@@ -226,14 +212,6 @@
                     localStorage.setItem('books', JSON.stringify(books));
                 }
             }
-            resetActiveButton();
-        }
-        
-        // Сброс активной кнопки
-        function resetActiveButton() {
-            // Сброс состояния кнопки
-            let buttons = document.querySelectorAll('.nav-link');
-            buttons.forEach(button => button.classList.remove('active'));
         }
         
         // Поиск по сканеру
@@ -244,10 +222,10 @@
             
             let resultMessage = '';
             if (bookResults.length > 0) {
-                resultMessage += 'Книги:\n' + bookResults.map(b => `${b.name} (Штрихкод: ${b.barcode}, Полка: ${b.shelf})`).join('\n') + '\n';
+                resultMessage += 'Книги:\n' + bookResults.map(b => ${b.name} (Штрихкод: ${b.barcode}, Полка: ${b.shelf})).join('\n') + '\n';
             }
             if (shelfResults.length > 0) {
-                resultMessage += 'Полки:\n' + shelfResults.map(s => `Код полки: ${s.code}, Местоположение: ${s.location}`).join('\n') + '\n';
+                resultMessage += 'Полки:\n' + shelfResults.map(s => Код полки: ${s.code}, Местоположение: ${s.location}).join('\n') + '\n';
             }
             
             if (resultMessage) {
@@ -255,7 +233,6 @@
             } else {
                 alert('Ничего не найдено');
             }
-            resetActiveButton();
         }
         
         // Поиск книг
@@ -263,7 +240,6 @@
             let searchQuery = document.getElementById('book-search').value.toLowerCase();
             let filteredBooks = books.filter(b => b.name.toLowerCase().includes(searchQuery));
             renderBooksTable(filteredBooks);
-            resetActiveButton();
         }
         
         // Поиск полок
@@ -271,7 +247,6 @@
             let searchQuery = document.getElementById('shelf-search').value.toLowerCase();
             let filteredShelves = shelves.filter(s => s.code.includes(searchQuery));
             renderShelvesTable(filteredShelves);
-            resetActiveButton();
         }
         
         // Отображение таблицы книг
@@ -280,7 +255,7 @@
             tbody.innerHTML = '';
             filteredBooks.forEach(book => {
                 let row = document.createElement('tr');
-                row.innerHTML = `
+                row.innerHTML = 
                     <td>${book.barcode}</td>
                     <td>${book.name}</td>
                     <td>${book.shelf}</td>
@@ -289,7 +264,7 @@
                         <button onclick="editBook('${book.barcode}')">Редактировать</button>
                         <button onclick="deleteBook('${book.barcode}')">Удалить</button>
                     </td>
-                `;
+                ;
                 tbody.appendChild(row);
             });
         }
@@ -300,13 +275,13 @@
             tbody.innerHTML = '';
             filteredShelves.forEach(shelf => {
                 let row = document.createElement('tr');
-                row.innerHTML = `
+                row.innerHTML = 
                     <td>${shelf.code}</td>
                     <td contenteditable="true" onblur="updateShelfLocation('${shelf.code}', this.textContent)">${shelf.location}</td>
                     <td>
                         <button onclick="deleteShelf('${shelf.code}')">Удалить</button>
                     </td>
-                `;
+                ;
                 tbody.appendChild(row);
             });
         }
@@ -318,7 +293,6 @@
                 shelf.location = newLocation;
                 localStorage.setItem('shelves', JSON.stringify(shelves));
             }
-            resetActiveButton();
         }
 
         // Удаление книги
@@ -326,7 +300,6 @@
             books = books.filter(b => b.barcode !== barcode);
             localStorage.setItem('books', JSON.stringify(books));
             searchBooks();
-            resetActiveButton();
         }
 
         // Удаление полки
@@ -334,28 +307,24 @@
             shelves = shelves.filter(s => s.code !== code);
             localStorage.setItem('shelves', JSON.stringify(shelves));
             searchShelves();
-            resetActiveButton();
         }
 
         // Экспорт данных в CSV
         function exportData() {
-            let booksCsv = books.map(b => `${b.barcode},${b.name},${b.shelf},${b.location}`).join('\n');
-            let shelvesCsv = shelves.map(s => `${s.code},${s.location}`).join('\n');
-            let csvContent = `Книги:\n${booksCsv}\n\nПолки:\n${shelvesCsv}`;
+            let booksCsv = books.map(b => ${b.barcode},${b.name},${b.shelf},${b.location}).join('\n');
+            let shelvesCsv = shelves.map(s => ${s.code},${s.location}).join('\n');
+            let csvContent = Книги:\n${booksCsv}\n\nПолки:\n${shelvesCsv};
             let blob = new Blob([csvContent], { type: 'text/csv' });
             let url = URL.createObjectURL(blob);
             let link = document.createElement('a');
             link.href = url;
             link.download = 'data.csv';
             link.click();
-            resetActiveButton();
         }
 
         // Импорт данных из CSV
-        function importFromCSV() {
-            let inputFile = document.getElementById('import-file');
-            let file = inputFile.files[0];
-            
+        function importData(event) {
+            let file = event.target.files[0];
             if (file) {
                 let reader = new FileReader();
                 reader.onload = function(e) {
@@ -374,7 +343,6 @@
                     localStorage.setItem('shelves', JSON.stringify(shelves));
                     searchBooks();
                     searchShelves();
-                    resetActiveButton();
                 };
                 reader.readAsText(file);
             }
