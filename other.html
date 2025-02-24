@@ -155,6 +155,7 @@
             <h3>Настройки</h3>
             <button onclick="exportData()">Экспортировать в CSV</button>
             <input type="file" id="import-file" onchange="importData(event)">
+            <button onclick="importFromCSV()">Импорт из CSV</button>
         </div>
     </div>
     
@@ -323,8 +324,10 @@
         }
 
         // Импорт данных из CSV
-        function importData(event) {
-            let file = event.target.files[0];
+        function importFromCSV() {
+            let inputFile = document.getElementById('import-file');
+            let file = inputFile.files[0];
+            
             if (file) {
                 let reader = new FileReader();
                 reader.onload = function(e) {
