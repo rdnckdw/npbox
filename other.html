@@ -93,24 +93,19 @@
     </style>
 </head>
 <body>
- <nav class="navbar">
-    <a href="index.html" class="nav-link">Коробки НП</a>
-    <a href="other.html" class="nav-link active">ПОИСК</a>
-  </nav>
     <nav class="navbar">
         <a href="#" class="nav-link active" onclick="switchTab('scanner')">Сканер</a>
         <a href="#" class="nav-link" onclick="switchTab('books')">Книги</a>
         <a href="#" class="nav-link" onclick="switchTab('shelves')">Полки</a>
         <a href="#" class="nav-link" onclick="switchTab('settings')">Настройки</a>
     </nav>
-  
+    
     <div class="container">
-             <div class="card">
-            <input type="text" id="scanner-search" placeholder="Поиск по штрихкоду или названию">
-            <button onclick="searchScanner()">Поиск</button>
-      </div>
+        <!-- Сканер -->
         <div id="scanner" class="card">
             <h2>Сканер штрих-кодов</h2>
+            <input type="text" id="scanner-search" placeholder="Поиск по штрихкоду или названию">
+            <button onclick="searchScanner()">Поиск</button>
             <video id="camera" autoplay></video>
             <button onclick="startScanner()">Начать сканирование</button>
             <p id="scan-result"></p>
@@ -165,10 +160,10 @@
         
         function switchTab(tab) {
             document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
-            document.querySelector(#${tab}).classList.remove('hidden');
+            document.querySelector(`#${tab}`).classList.remove('hidden');
             
             document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            document.querySelector([onclick="switchTab('${tab}')"]).classList.add('active');
+            document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
         }
         
         // Функция для начала сканирования
@@ -191,7 +186,7 @@
             if (/^\d{3}$/.test(code)) {
                 let shelf = shelves.find(s => s.code === code);
                 if (shelf) {
-                    alert(Полка найдена: ${shelf.location});
+                    alert(`Полка найдена: ${shelf.location}`);
                     alert('Книги на этой полке: ' + books.filter(b => b.shelf === shelf.code).map(b => b.name).join(', '));
                 } else {
                     let location = prompt('Введите местоположение полки:');
@@ -203,7 +198,7 @@
             } else {
                 let book = books.find(b => b.barcode === code);
                 if (book) {
-                    alert(Книга найдена: ${book.name}, Код полки: ${book.shelf});
+                    alert(`Книга найдена: ${book.name}, Код полки: ${book.shelf}`);
                 } else {
                     let name = prompt('Введите название книги:');
                     let shelfCode = prompt('Введите код полки:');
@@ -222,10 +217,10 @@
             
             let resultMessage = '';
             if (bookResults.length > 0) {
-                resultMessage += 'Книги:\n' + bookResults.map(b => ${b.name} (Штрихкод: ${b.barcode}, Полка: ${b.shelf})).join('\n') + '\n';
+                resultMessage += 'Книги:\n' + bookResults.map(b => `${b.name} (Штрихкод: ${b.barcode}, Полка: ${b.shelf})`).join('\n') + '\n';
             }
             if (shelfResults.length > 0) {
-                resultMessage += 'Полки:\n' + shelfResults.map(s => Код полки: ${s.code}, Местоположение: ${s.location}).join('\n') + '\n';
+                resultMessage += 'Полки:\n' + shelfResults.map(s => `Код полки: ${s.code}, Местоположение: ${s.location}`).join('\n') + '\n';
             }
             
             if (resultMessage) {
@@ -255,7 +250,7 @@
             tbody.innerHTML = '';
             filteredBooks.forEach(book => {
                 let row = document.createElement('tr');
-                row.innerHTML = 
+                row.innerHTML = `
                     <td>${book.barcode}</td>
                     <td>${book.name}</td>
                     <td>${book.shelf}</td>
@@ -264,7 +259,7 @@
                         <button onclick="editBook('${book.barcode}')">Редактировать</button>
                         <button onclick="deleteBook('${book.barcode}')">Удалить</button>
                     </td>
-                ;
+                `;
                 tbody.appendChild(row);
             });
         }
@@ -275,13 +270,13 @@
             tbody.innerHTML = '';
             filteredShelves.forEach(shelf => {
                 let row = document.createElement('tr');
-                row.innerHTML = 
+                row.innerHTML = `
                     <td>${shelf.code}</td>
                     <td contenteditable="true" onblur="updateShelfLocation('${shelf.code}', this.textContent)">${shelf.location}</td>
                     <td>
                         <button onclick="deleteShelf('${shelf.code}')">Удалить</button>
                     </td>
-                ;
+                `;
                 tbody.appendChild(row);
             });
         }
@@ -311,9 +306,9 @@
 
         // Экспорт данных в CSV
         function exportData() {
-            let booksCsv = books.map(b => ${b.barcode},${b.name},${b.shelf},${b.location}).join('\n');
-            let shelvesCsv = shelves.map(s => ${s.code},${s.location}).join('\n');
-            let csvContent = Книги:\n${booksCsv}\n\nПолки:\n${shelvesCsv};
+            let booksCsv = books.map(b => `${b.barcode},${b.name},${b.shelf},${b.location}`).join('\n');
+            let shelvesCsv = shelves.map(s => `${s.code},${s.location}`).join('\n');
+            let csvContent = `Книги:\n${booksCsv}\n\nПолки:\n${shelvesCsv}`;
             let blob = new Blob([csvContent], { type: 'text/csv' });
             let url = URL.createObjectURL(blob);
             let link = document.createElement('a');
