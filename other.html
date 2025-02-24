@@ -84,6 +84,12 @@
         .hidden {
             display: none;
         }
+        #camera {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -161,6 +167,7 @@
         // Функция для начала сканирования
         function startScanner() {
             const video = document.getElementById('camera');
+            video.style.display = 'block';
             scanner = new ZXing.BrowserBarcodeReader();
             scanner.decodeFromVideoDevice(undefined, 'camera', (result, err) => {
                 if (result) {
@@ -193,7 +200,8 @@
                 } else {
                     let name = prompt('Введите название книги:');
                     let shelfCode = prompt('Введите код полки:');
-                    books.push({ barcode: code, name, shelf: shelfCode });
+                    let location = prompt('Введите местоположение книги:');
+                    books.push({ barcode: code, name, shelf: shelfCode, location });
                     localStorage.setItem('books', JSON.stringify(books));
                 }
             }
@@ -223,8 +231,11 @@
                     <td>${book.barcode}</td>
                     <td>${book.name}</td>
                     <td>${book.shelf}</td>
-                    <td>${shelves.find(s => s.code === book.shelf)?.location || ''}</td>
-                    <td><button onclick="editBook('${book.barcode}')">Редактировать</button><button onclick="deleteBook('${book.barcode}')">Удалить</button></td>
+                    <td>${book.location}</td>
+                    <td>
+                        <button onclick="editBook('${book.barcode}')">Редактировать</button>
+                        <button onclick="deleteBook('${book.barcode}')">Удалить</button>
+                    </td>
                 `;
                 tbody.appendChild(row);
             });
@@ -238,61 +249,76 @@
                 let row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${shelf.code}</td>
-                    <td>${shelf.location}</td>
-                    <td><button onclick="deleteShelf('${shelf.code}')">Удалить</button></td>
+                    <td contenteditable="true" onblur="updateShelfLocation('${shelf.code}', this.textContent)">${shelf.location}</td>
+                    <td>
+                        <button onclick="deleteShelf('${shelf.code}')">Удалить</button>
+                    </td>
                 `;
                 tbody.appendChild(row);
             });
         }
-        
+
+        // Обновление местоположения полки
+        function updateShelfLocation(code, newLocation) {
+            let shelf = shelves.find(s => s.code === code);
+            if (shelf) {
+                shelf.location = newLocation;
+                localStorage.setItem('shelves', JSON.stringify(shelves));
+            }
+        }
+
+        // Удаление книги
+        function deleteBook(barcode) {
+            books = books.filter(b => b.barcode !== barcode);
+            localStorage.setItem('books', JSON.stringify(books));
+            searchBooks();
+        }
+
+        // Удаление полки
+        function deleteShelf(code) {
+            shelves = shelves.filter(s => s.code !== code);
+            localStorage.setItem('shelves', JSON.stringify(shelves));
+            searchShelves();
+        }
+
         // Экспорт данных в CSV
         function exportData() {
-            let csvBooks = books.map(book => `${book.barcode},${book.name},${book.shelf}`).join('\n');
-            let csvShelves = shelves.map(shelf => `${shelf.code},${shelf.location}`).join('\n');
-            let csvContent = `Книги\nШтрихкод,Название,Код полки\n${csvBooks}\nПолки\nКод полки,Местоположение\n${csvShelves}`;
+            let booksCsv = books.map(b => `${b.barcode},${b.name},${b.shelf},${b.location}`).join('\n');
+            let shelvesCsv = shelves.map(s => `${s.code},${s.location}`).join('\n');
+            let csvContent = `Книги:\n${booksCsv}\n\nПолки:\n${shelvesCsv}`;
             let blob = new Blob([csvContent], { type: 'text/csv' });
             let url = URL.createObjectURL(blob);
-            let a = document.createElement('a');
-            a.href = url;
-            a.download = 'data.csv';
-            a.click();
+            let link = document.createElement('a');
+            link.href = url;
+            link.download = 'data.csv';
+            link.click();
         }
-        
+
         // Импорт данных из CSV
         function importData(event) {
             let file = event.target.files[0];
-            let reader = new FileReader();
-            reader.onload = function(e) {
-                let content = e.target.result;
-                let rows = content.split('\n').slice(1);
-                let booksData = [];
-                let shelvesData = [];
-                let isBooksSection = true;
-
-                rows.forEach(row => {
-                    let columns = row.split(',');
-                    if (columns.length < 2) return;
-                    
-                    if (isBooksSection) {
-                        if (columns[0].startsWith('Код полки')) isBooksSection = false;
-                        else booksData.push({ barcode: columns[0], name: columns[1], shelf: columns[2] });
-                    } else {
-                        shelvesData.push({ code: columns[0], location: columns[1] });
-                    }
-                });
-                
-                books = booksData;
-                shelves = shelvesData;
-                localStorage.setItem('books', JSON.stringify(books));
-                localStorage.setItem('shelves', JSON.stringify(shelves));
-                searchBooks();
-                searchShelves();
-            };
-            reader.readAsText(file);
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let content = e.target.result.split('\n');
+                    let booksData = content.slice(1, content.indexOf('Полки:')).join('\n').split('\n').map(line => {
+                        let [barcode, name, shelf, location] = line.split(',');
+                        return { barcode, name, shelf, location };
+                    });
+                    let shelvesData = content.slice(content.indexOf('Полки:') + 1).join('\n').split('\n').map(line => {
+                        let [code, location] = line.split(',');
+                        return { code, location };
+                    });
+                    books = booksData;
+                    shelves = shelvesData;
+                    localStorage.setItem('books', JSON.stringify(books));
+                    localStorage.setItem('shelves', JSON.stringify(shelves));
+                    searchBooks();
+                    searchShelves();
+                };
+                reader.readAsText(file);
+            }
         }
-
-        // Инициализация
-        switchTab('scanner');
     </script>
 </body>
 </html>
