@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Другое</title>
+    <title>Поиск книг</title>
     <script src="https://unpkg.com/@zxing/library@latest"></script>
     <style>
         body {
@@ -45,13 +45,13 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            table-layout: fixed; /* Это позволяет предотвратить вылазку содержимого за рамки */
+            table-layout: fixed;
         }
         th, td {
             padding: 8px;
             text-align: center;
             border-bottom: 1px solid #e0e0e0;
-            word-wrap: break-word; /* Слово не вылазит за границы */
+            word-wrap: break-word;
         }
         th {
             background-color: #f5f5f7;
@@ -95,8 +95,8 @@
 
         /* Стиль для scrollable таблиц */
         table.scrollable {
-            max-height: 300px; /* Максимальная высота таблицы */
-            overflow-y: auto; /* Вертикальная прокрутка */
+            max-height: 300px;
+            overflow-y: auto;
             display: block;
         }
 
@@ -115,7 +115,6 @@
             padding-top: 60px;
         }
 
-        /* Модальное окно контент */
         .modal-content {
             background-color: #fefefe;
             margin: 5% auto;
@@ -144,10 +143,10 @@
 <body>
  <nav class="navbar">
     <a href="index.html" class="nav-link">Коробки НП</a>
-    <a href="other.html" class="nav-link active">Другое</a>
+    <a href="other.html" class="nav-link active">Поиск</a>
   </nav>
     <nav class="navbar">
-        <a href="#" class="nav-link active" onclick="switchTab('scanner', this)">Сканер</a>
+        <a href="#" class="nav-link active" onclick="switchTab('scanner', this)">Главная</a>
         <a href="#" class="nav-link" onclick="switchTab('books', this)">Книги</a>
         <a href="#" class="nav-link" onclick="switchTab('shelves', this)">Полки</a>
         <a href="#" class="nav-link" onclick="switchTab('settings', this)">Настройки</a>
@@ -176,7 +175,6 @@
                         <th>Код/Название книги</th>
                         <th>Код полки</th>
                         <th>Местоположение</th>
-                        <th>Комментарий</th>
                         <th>Действия</th>
                     </tr>
                 </thead>
@@ -205,30 +203,6 @@
             <h3>Настройки</h3>
             <button onclick="exportData()">Экспортировать в CSV</button>
             <input type="file" id="import-file" onchange="importData(event)">
-            <button onclick="importFromCSV()">Импорт из CSV</button>
-        </div>
-    </div>
-
-    <!-- Модальное окно редактирования книги -->
-    <div id="editBookModal">
-        <div class="modal-content">
-            <span class="close" onclick="closeEditModal()">&times;</span>
-            <h3>Редактировать книгу</h3>
-            <form id="edit-book-form">
-                <label for="edit-name">Название:</label>
-                <input type="text" id="edit-name" required>
-                <br>
-                <label for="edit-shelf">Полка:</label>
-                <input type="text" id="edit-shelf" required>
-                <br>
-                <label for="edit-location">Местоположение:</label>
-                <input type="text" id="edit-location" required>
-                <br>
-                <label for="edit-comment">Комментарий:</label>
-                <textarea id="edit-comment"></textarea>
-                <br>
-                <button type="submit">Сохранить изменения</button>
-            </form>
         </div>
     </div>
 
@@ -236,95 +210,52 @@
         let scanner;
         let books = JSON.parse(localStorage.getItem('books') || '[]');
         let shelves = JSON.parse(localStorage.getItem('shelves') || '[]');
-        let currentBookIndex = null;
 
-        function switchTab(tab, clickedLink) {
+        // Переключение вкладок
+        function switchTab(tab, el) {
             document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
             document.querySelector(`#${tab}`).classList.remove('hidden');
-            
-            // Сброс всех кнопок
             document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            
-            // Отметка активной кнопки
-            clickedLink.classList.add('active');
+            el.classList.add('active');
         }
 
-        // Функция для начала сканирования
-        function startScanner() {
-            const video = document.getElementById('camera');
-            video.style.display = 'block';
-            scanner = new ZXing.BrowserBarcodeReader();
-            scanner.decodeFromVideoDevice(undefined, 'camera', (result, err) => {
-                if (result) {
-                    processScan(result.text);
-                }
-            });
+        // Экспорт данных в CSV
+        function exportData() {
+            let booksCsv = books.map(b => `${b.barcode},${b.name},${b.shelf},${b.location}`).join('\n');
+            let shelvesCsv = shelves.map(s => `${s.code},${s.location}`).join('\n');
+            let csvContent = `Книги:\n${booksCsv}\n\nПолки:\n${shelvesCsv}`;
+            let blob = new Blob([csvContent], { type: 'text/csv' });
+            let url = URL.createObjectURL(blob);
+            let link = document.createElement('a');
+            link.href = url;
+            link.download = 'data.csv';
+            link.click();
         }
 
-        // Обработка сканированного штрихкода
-        function processScan(code) {
-            if (scanner) scanner.reset();
-            document.getElementById('camera').style.display = 'none';
-            
-            if (/^\d{3}$/.test(code)) {
-                let shelf = shelves.find(s => s.code === code);
-                if (shelf) {
-                    alert(`Полка найдена: ${shelf.location}`);
-                    alert('Книги на этой полке: ' + books.filter(b => b.shelf === shelf.code).map(b => b.name).join(', '));
-                } else {
-                    let location = prompt('Введите местоположение полки:');
-                    if (location) {
-                        shelves.push({ code, location });
-                        localStorage.setItem('shelves', JSON.stringify(shelves));
-                    }
-                }
-            } else {
-                let book = books.find(b => b.barcode === code);
-                if (book) {
-                    alert(`Книга найдена: ${book.name}, Код полки: ${book.shelf}, Комментарий: ${book.comment}`);
-                } else {
-                    let name = prompt('Введите название книги:');
-                    let shelfCode = prompt('Введите код полки:');
-                    let location = prompt('Введите местоположение книги:');
-                    let comment = prompt('Введите комментарий:');
-                    books.push({ barcode: code, name, shelf: shelfCode, location, comment });
+        // Импорт данных из CSV
+        function importData(event) {
+            let file = event.target.files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = function(e) {
+                    let content = e.target.result.split('\n');
+                    let booksData = content.slice(1, content.indexOf('Полки:')).join('\n').split('\n').map(line => {
+                        let [barcode, name, shelf, location] = line.split(',');
+                        return { barcode, name, shelf, location };
+                    });
+                    let shelvesData = content.slice(content.indexOf('Полки:') + 1).join('\n').split('\n').map(line => {
+                        let [code, location] = line.split(',');
+                        return { code, location };
+                    });
+                    books = booksData;
+                    shelves = shelvesData;
                     localStorage.setItem('books', JSON.stringify(books));
-                }
+                    localStorage.setItem('shelves', JSON.stringify(shelves));
+                    searchBooks();
+                    searchShelves();
+                };
+                reader.readAsText(file);
             }
-            resetActiveButton();
-        }
-
-        // Редактирование книги
-        function editBook(barcode) {
-            currentBookIndex = books.findIndex(b => b.barcode === barcode);
-            if (currentBookIndex !== -1) {
-                const book = books[currentBookIndex];
-                document.getElementById('edit-name').value = book.name;
-                document.getElementById('edit-shelf').value = book.shelf;
-                document.getElementById('edit-location').value = book.location;
-                document.getElementById('edit-comment').value = book.comment;
-                document.getElementById('editBookModal').style.display = 'block';
-            }
-        }
-
-        // Сохранение изменений книги
-        document.getElementById('edit-book-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            const updatedBook = {
-                name: document.getElementById('edit-name').value,
-                shelf: document.getElementById('edit-shelf').value,
-                location: document.getElementById('edit-location').value,
-                comment: document.getElementById('edit-comment').value
-            };
-            books[currentBookIndex] = { ...books[currentBookIndex], ...updatedBook };
-            localStorage.setItem('books', JSON.stringify(books));
-            closeEditModal();
-            searchBooks();
-        });
-
-        // Закрыть модальное окно
-        function closeEditModal() {
-            document.getElementById('editBookModal').style.display = 'none';
         }
 
         // Поиск по сканеру
@@ -333,81 +264,77 @@
             let bookResults = books.filter(b => b.name.toLowerCase().includes(searchQuery) || b.barcode.includes(searchQuery));
             let shelfResults = shelves.filter(s => s.code.includes(searchQuery));
             
-            let resultMessage = '';
-            if (bookResults.length > 0) {
-                resultMessage += 'Книги:\n' + bookResults.map(b => `${b.name} (Штрихкод: ${b.barcode}, Полка: ${b.shelf}, Комментарий: ${b.comment})`).join('\n') + '\n';
+            let result = '';
+            if (bookResults.length) {
+                result += 'Книги: ' + bookResults.map(b => b.name).join(', ') + '\n';
             }
-            if (shelfResults.length > 0) {
-                resultMessage += 'Полки:\n' + shelfResults.map(s => `Код полки: ${s.code}, Местоположение: ${s.location}`).join('\n') + '\n';
+            if (shelfResults.length) {
+                result += 'Полки: ' + shelfResults.map(s => s.code).join(', ');
             }
+            document.getElementById('scan-result').textContent = result || 'Ничего не найдено';
+        }
+
+        // Редактировать книгу
+        function editBook(index) {
+            let book = books[index];
+            document.getElementById('editBookModal').style.display = 'block';
+            document.getElementById('edit-book-name').value = book.name;
+            document.getElementById('edit-book-barcode').value = book.barcode;
+            document.getElementById('edit-book-shelf').value = book.shelf;
+            document.getElementById('edit-book-location').value = book.location;
+        }
+
+        // Закрытие модального окна редактирования
+        function closeModal() {
+            document.getElementById('editBookModal').style.display = 'none';
+        }
+        
+        // Сохранение изменений книги
+        function saveChanges() {
+            let name = document.getElementById('edit-book-name').value;
+            let barcode = document.getElementById('edit-book-barcode').value;
+            let shelf = document.getElementById('edit-book-shelf').value;
+            let location = document.getElementById('edit-book-location').value;
             
-            if (resultMessage) {
-                alert(resultMessage);
-            } else {
-                alert('Ничего не найдено');
+            let index = books.findIndex(book => book.barcode === barcode);
+            if (index !== -1) {
+                books[index] = { name, barcode, shelf, location };
+                localStorage.setItem('books', JSON.stringify(books));
+                searchBooks();
+                closeModal();
             }
-            resetActiveButton();
         }
 
-        // Поиск книг
+        // Заполнение таблицы книг
         function searchBooks() {
-            let searchQuery = document.getElementById('book-search').value.toLowerCase();
-            let filteredBooks = books.filter(b => b.name.toLowerCase().includes(searchQuery));
-            renderBooksTable(filteredBooks);
-            resetActiveButton();
-        }
-
-        // Поиск полок
-        function searchShelves() {
-            let searchQuery = document.getElementById('shelf-search').value.toLowerCase();
-            let filteredShelves = shelves.filter(s => s.code.includes(searchQuery));
-            renderShelvesTable(filteredShelves);
-        }
-
-        // Отображение таблицы книг
-        function renderBooksTable(filteredBooks) {
-            const tableBody = document.querySelector('#books-table tbody');
-            tableBody.innerHTML = '';
-            filteredBooks.forEach(book => {
+            let bookTable = document.querySelector('#books-table tbody');
+            bookTable.innerHTML = '';
+            books.forEach((book, index) => {
                 let row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${book.barcode}</td>
                     <td>${book.name}</td>
                     <td>${book.shelf}</td>
                     <td>${book.location}</td>
-                    <td>${book.comment}</td>
-                    <td>
-                        <button onclick="editBook('${book.barcode}')">Редактировать</button>
-                    </td>
+                    <td><button onclick="editBook(${index})">Редактировать</button></td>
                 `;
-                tableBody.appendChild(row);
+                bookTable.appendChild(row);
             });
         }
 
-        // Отображение таблицы полок
-        function renderShelvesTable(filteredShelves) {
-            const tableBody = document.querySelector('#shelves-table tbody');
-            tableBody.innerHTML = '';
-            filteredShelves.forEach(shelf => {
+        // Заполнение таблицы полок
+        function searchShelves() {
+            let shelfTable = document.querySelector('#shelves-table tbody');
+            shelfTable.innerHTML = '';
+            shelves.forEach((shelf, index) => {
                 let row = document.createElement('tr');
                 row.innerHTML = `
                     <td>${shelf.code}</td>
                     <td>${shelf.location}</td>
+                    <td><button onclick="editShelf(${index})">Редактировать</button></td>
                 `;
-                tableBody.appendChild(row);
+                shelfTable.appendChild(row);
             });
-        }
-
-        // Инициализация
-        document.addEventListener('DOMContentLoaded', () => {
-            renderBooksTable(books);
-            renderShelvesTable(shelves);
-        });
-
-        // Сброс активной кнопки
-        function resetActiveButton() {
-            document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
-            document.querySelector('.nav-link').classList.add('active');
         }
     </script>
 </body>
