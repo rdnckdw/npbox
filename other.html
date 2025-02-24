@@ -1,40 +1,113 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Другое</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f8f9fa;
-    }
-    .navbar {
-      display: flex;
-      background: white;
-      padding: 10px;
-      border-bottom: 1px solid #ccc;
-    }
-    .nav-link {
-      color: black;
-      text-decoration: none;
-      padding: 10px 15px;
-      font-size: 18px;
-    }
-    .nav-link.active, .nav-link:hover {
-      background: #f0f0f0;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Другое</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <nav class="navbar">
-    <a href="index.html" class="nav-link">Коробки НП</a>
-    <a href="other.html" class="nav-link active">Другое</a>
-  </nav>
-
-  <h1>Функция в разработке</h1>
-  <p>Здесь появятся новые возможности в будущем!</p>
+    <nav class="navbar">
+        <a href="index.html" class="nav-link">Коробки НП</a>
+        <a href="other.html" class="nav-link active">Другое</a>
+    </nav>
+    
+    <div class="tabs">
+        <button class="tab-button" onclick="openTab('scanner')">Сканер</button>
+        <button class="tab-button" onclick="openTab('books')">Книги</button>
+        <button class="tab-button" onclick="openTab('shelves')">Полки</button>
+        <button class="tab-button" onclick="openTab('settings')">Настройки</button>
+    </div>
+    
+    <div id="scanner" class="tab-content">
+        <h2>Сканер штрих-кодов</h2>
+        <video id="camera" autoplay></video>
+        <button onclick="startScanner()">Начать сканирование</button>
+        <p id="scan-result"></p>
+    </div>
+    
+    <div id="books" class="tab-content">
+        <h2>Книги</h2>
+        <input type="text" id="book-search" placeholder="Введите название книги">
+        <button onclick="searchBook()">Поиск</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Штрихкод</th>
+                    <th>Название</th>
+                    <th>Код полки</th>
+                    <th>Местоположение</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody id="book-table">
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="shelves" class="tab-content">
+        <h2>Полки</h2>
+        <input type="text" id="shelf-search" placeholder="Введите код полки">
+        <button onclick="searchShelf()">Поиск</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Код полки</th>
+                    <th>Местоположение</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody id="shelf-table">
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="settings" class="tab-content">
+        <h2>Настройки</h2>
+        <button onclick="exportToCSV()">Сохранить в CSV</button>
+        <input type="file" id="file-input" accept=".csv">
+        <button onclick="importFromCSV()">Загрузить из CSV</button>
+    </div>
+    
+    <script>
+        function openTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.style.display = 'none');
+            document.getElementById(tabName).style.display = 'block';
+        }
+        
+        function startScanner() {
+            const video = document.getElementById('camera');
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(stream => {
+                    video.srcObject = stream;
+                })
+                .catch(err => {
+                    console.error('Ошибка доступа к камере: ', err);
+                    alert('Не удалось получить доступ к камере');
+                });
+        }
+        
+        function searchBook() {
+            const searchQuery = document.getElementById('book-search').value.toLowerCase();
+            alert('Поиск книги: ' + searchQuery);
+        }
+        
+        function searchShelf() {
+            const searchQuery = document.getElementById('shelf-search').value;
+            alert('Поиск полки: ' + searchQuery);
+        }
+        
+        function exportToCSV() {
+            alert('Экспорт данных в CSV');
+        }
+        
+        function importFromCSV() {
+            alert('Импорт данных из CSV');
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            openTab('scanner');
+        });
+    </script>
 </body>
 </html>
