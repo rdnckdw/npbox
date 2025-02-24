@@ -93,10 +93,6 @@
     </style>
 </head>
 <body>
- <nav class="navbar">
-    <a href="index.html" class="nav-link">Коробки НП</a>
-    <a href="other.html" class="nav-link active">Другое</a>
-  </nav>
     <nav class="navbar">
         <a href="#" class="nav-link active" onclick="switchTab('scanner')">Сканер</a>
         <a href="#" class="nav-link" onclick="switchTab('books')">Книги</a>
@@ -108,6 +104,8 @@
         <!-- Сканер -->
         <div id="scanner" class="card">
             <h2>Сканер штрих-кодов</h2>
+            <input type="text" id="scanner-search" placeholder="Поиск по штрихкоду или названию">
+            <button onclick="searchScanner()">Поиск</button>
             <video id="camera" autoplay></video>
             <button onclick="startScanner()">Начать сканирование</button>
             <p id="scan-result"></p>
@@ -211,6 +209,27 @@
             }
         }
         
+        // Поиск по сканеру
+        function searchScanner() {
+            let searchQuery = document.getElementById('scanner-search').value.toLowerCase();
+            let bookResults = books.filter(b => b.name.toLowerCase().includes(searchQuery) || b.barcode.includes(searchQuery));
+            let shelfResults = shelves.filter(s => s.code.includes(searchQuery));
+            
+            let resultMessage = '';
+            if (bookResults.length > 0) {
+                resultMessage += 'Книги:\n' + bookResults.map(b => `${b.name} (Штрихкод: ${b.barcode}, Полка: ${b.shelf})`).join('\n') + '\n';
+            }
+            if (shelfResults.length > 0) {
+                resultMessage += 'Полки:\n' + shelfResults.map(s => `Код полки: ${s.code}, Местоположение: ${s.location}`).join('\n') + '\n';
+            }
+            
+            if (resultMessage) {
+                alert(resultMessage);
+            } else {
+                alert('Ничего не найдено');
+            }
+        }
+        
         // Поиск книг
         function searchBooks() {
             let searchQuery = document.getElementById('book-search').value.toLowerCase();
@@ -232,7 +251,6 @@
             filteredBooks.forEach(book => {
                 let row = document.createElement('tr');
                 row.innerHTML = `
-
                     <td>${book.barcode}</td>
                     <td>${book.name}</td>
                     <td>${book.shelf}</td>
