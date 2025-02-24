@@ -81,6 +81,9 @@
         button:hover {
           background-color: #0056b3;
         }
+        .hidden {
+          display: none;
+        }
     </style>
 </head>
 <body>
@@ -95,6 +98,19 @@
             <video id="camera" autoplay></video>
             <button onclick="startScanner()">Начать сканирование</button>
             <p id="scan-result"></p>
+        </div>
+        
+        <div id="add-book-form" class="card hidden">
+            <h3>Добавить книгу</h3>
+            <input type="text" id="book-name" placeholder="Название книги">
+            <input type="text" id="book-code" placeholder="Код полки">
+            <button onclick="saveBook()">Сохранить</button>
+        </div>
+        
+        <div id="add-shelf-form" class="card hidden">
+            <h3>Добавить полку</h3>
+            <input type="text" id="shelf-location" placeholder="Местоположение">
+            <button onclick="saveShelf()">Сохранить</button>
         </div>
     </div>
     
@@ -112,7 +128,45 @@
         function processScan(code) {
             if (scanner) scanner.reset();
             document.getElementById('camera').style.display = 'none';
-            alert(`Сканирован код: ${code}`);
+            
+            let books = JSON.parse(localStorage.getItem('books') || '[]');
+            let shelves = JSON.parse(localStorage.getItem('shelves') || '[]');
+            
+            if (/^\d{3}$/.test(code)) {
+                let shelf = shelves.find(s => s.code === code);
+                if (shelf) {
+                    alert(`Полка найдена: ${shelf.location}`);
+                } else {
+                    document.getElementById('add-shelf-form').classList.remove('hidden');
+                }
+            } else {
+                let book = books.find(b => b.barcode === code);
+                if (book) {
+                    alert(`Книга найдена: ${book.name}, Код полки: ${book.shelf}`);
+                } else {
+                    document.getElementById('add-book-form').classList.remove('hidden');
+                    document.getElementById('book-code').value = code;
+                }
+            }
+        }
+        
+        function saveBook() {
+            let name = document.getElementById('book-name').value;
+            let code = document.getElementById('book-code').value;
+            let books = JSON.parse(localStorage.getItem('books') || '[]');
+            books.push({ barcode: code, name, shelf: '' });
+            localStorage.setItem('books', JSON.stringify(books));
+            alert('Книга добавлена!');
+            document.getElementById('add-book-form').classList.add('hidden');
+        }
+        
+        function saveShelf() {
+            let location = document.getElementById('shelf-location').value;
+            let shelves = JSON.parse(localStorage.getItem('shelves') || '[]');
+            shelves.push({ code: code, location });
+            localStorage.setItem('shelves', JSON.stringify(shelves));
+            alert('Полка добавлена!');
+            document.getElementById('add-shelf-form').classList.add('hidden');
         }
     </script>
 </body>
