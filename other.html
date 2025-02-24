@@ -116,7 +116,7 @@
         <!-- Сканер -->
         <div id="scanner" class="card">
             <h2>Сканер штрих-кодов</h2>
-            <video id="camera" autoplay></video>
+            <video id="camera" autoplay class="hidden"></video>
             <button onclick="startScanner()">Начать сканирование</button>
             <p id="scan-result"></p>
         </div>
@@ -168,6 +168,7 @@
         let books = JSON.parse(localStorage.getItem('books') || '[]');
         let shelves = JSON.parse(localStorage.getItem('shelves') || '[]');
         let scanResultElement = document.getElementById('scan-result');
+        let cameraElement = document.getElementById('camera');
         
         function switchTab(tab) {
             document.querySelectorAll('.card').forEach(el => el.classList.add('hidden'));
@@ -178,6 +179,8 @@
 
         // Функция для начала сканирования
         function startScanner() {
+            cameraElement.classList.remove('hidden');  // Показываем камеру
+
             if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
                 codeReader = new ZXing.BrowserQRCodeReader();
                 codeReader.getVideoInputDevices()
@@ -187,6 +190,7 @@
                             if (result) {
                                 scanResultElement.textContent = `Результат: ${result.text}`;
                                 saveScanResult(result.text); // Сохраняем результат сканирования
+                                stopScanner();  // Останавливаем сканирование после успешного результата
                             }
                             if (error && !(error instanceof ZXing.NotFoundException)) {
                                 scanResultElement.textContent = `Ошибка: ${error.message}`;
@@ -199,6 +203,12 @@
             } else {
                 scanResultElement.textContent = "Ваш браузер не поддерживает сканирование штрих-кодов.";
             }
+        }
+
+        // Функция остановки сканирования
+        function stopScanner() {
+            codeReader.reset();
+            cameraElement.classList.add('hidden');  // Скрываем камеру
         }
 
         // Сохранение результата сканирования
