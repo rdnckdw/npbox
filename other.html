@@ -166,16 +166,18 @@
                     html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
                     weekDates.forEach(day => {
                         const statusData = this.schedules[emp.id] && this.schedules[emp.id][day.date];
-                        const isWorking = statusData ? statusData.isWorking : true; // по умолчанию работает
+                        const status = statusData ? (statusData.isWorking ? 'Работает' : 'Выходной') : 'Работает';
                         const comment = statusData ? statusData.comment : '';
-                        const bgColor = isWorking ? 'bg-green-100' : 'bg-red-100';
-                        const status = isWorking ? 'Работает' : 'Выходной';
+                        const bgColor = statusData && statusData.isWorking ? 'bg-green-100' : 'bg-red-100';
 
-                        html += `<td class="p-3 text-center ${bgColor}" ${this.isAdmin ? `onclick="App.toggleStatus('${emp.id}', '${day.date}')"` : ''}>
-                                    <div>${status}</div>
-                                    ${this.isAdmin ? `<button class="text-xs text-blue-600 hover:underline mt-1" onclick="event.stopPropagation(); App.editComment('${emp.id}', '${day.date}')">✎</button>` : ''}
-                                    ${comment ? `<p class="text-xs mt-1">${comment}</p>` : ''}
-                                </td>`;
+                        html += `<td class="p-3 text-center ${bgColor}" onclick="${this.isAdmin ? `toggleStatus('${emp.id}', '${day.date}')` : ''}">
+                                    ${status}
+                                    <br>
+                                    <button class="text-sm text-blue-600 hover:underline" onclick="${this.isAdmin ? `editComment('${emp.id}', '${day.date}')` : ''}">
+                                        Комментарий
+                                    </button>
+                                    <p class="text-xs">${comment || ''}</p>
+                                  </td>`;
                     });
                     html += `</tr>`;
                 });
@@ -194,7 +196,8 @@
                         .then(() => {
                             this.loadSchedule(this.currentWeekStart);
                             this.renderSchedule();
-                        });
+                        })
+                        .catch(error => console.error('Ошибка при обновлении статуса:', error));
                 }
             },
 
@@ -208,7 +211,8 @@
                             .then(() => {
                                 this.loadSchedule(this.currentWeekStart);
                                 this.renderSchedule();
-                            });
+                            })
+                            .catch(error => console.error('Ошибка при обновлении комментария:', error));
                     }
                 }
             },
@@ -216,65 +220,90 @@
             setupNavigation() {
                 const prevButton = document.getElementById('prev-week');
                 const nextButton = document.getElementById('next-week');
+                const weekDisplay = document.getElementById('week-display');
 
                 prevButton.addEventListener('click', () => {
-                    this.currentWeekStart = new Date(this.currentWeekStart.getTime() - 7 * 86400000);
+                    this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
                     this.loadSchedule(this.currentWeekStart);
                     this.renderSchedule();
+                    this.updateWeekDisplay();
                 });
 
                 nextButton.addEventListener('click', () => {
-                    this.currentWeekStart = new Date(this.currentWeekStart.getTime() + 7 * 86400000);
+                    this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
                     this.loadSchedule(this.currentWeekStart);
                     this.renderSchedule();
+                    this.updateWeekDisplay();
                 });
+
+                this.updateWeekDisplay();
+            },
+
+            updateWeekDisplay() {
+                const startDate = this.currentWeekStart;
+                const endDate = new Date(startDate);
+                endDate.setDate(endDate.getDate() + 6);
+
+                const weekDisplay = document.getElementById('week-display');
+                weekDisplay.textContent = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
             },
 
             setupAdminLogin() {
-                const adminButton = document.getElementById('admin-btn');
+                const loginBtn = document.getElementById('admin-btn');
                 const loginModal = document.getElementById('login-modal');
                 const loginSubmit = document.getElementById('login-submit');
-                const loginUsername = document.getElementById('login-username');
-                const loginPassword = document.getElementById('login-password');
+                const loginCancel = document.getElementById('login-cancel');
                 const loginError = document.getElementById('login-error');
 
-                adminButton.addEventListener('click', () => {
+                loginBtn.addEventListener('click', () => {
                     loginModal.classList.remove('hidden');
                 });
 
                 loginSubmit.addEventListener('click', () => {
-                    if (loginUsername.value === 'admin' && loginPassword.value === 'password') {
+                    const username = document.getElementById('login-username').value;
+                    const password = document.getElementById('login-password').value;
+
+                    // Просто пример валидации, измените на реальную логику
+                    if (username === 'admin' && password === 'password') {
                         this.isAdmin = true;
                         loginModal.classList.add('hidden');
-                        this.setupAdminTabs();
-                        this.loadSchedule(this.currentWeekStart);
-                        this.renderSchedule();
+                        this.showAdminPanel();
                     } else {
                         loginError.classList.remove('hidden');
                     }
                 });
 
-                const loginCancel = document.getElementById('login-cancel');
                 loginCancel.addEventListener('click', () => {
                     loginModal.classList.add('hidden');
                 });
             },
 
-            setupAdminTabs() {
-                if (this.isAdmin) {
-                    const adminTabs = document.getElementById('admin-tabs');
-                    adminTabs.classList.remove('hidden');
-                    const tabSchedule = document.getElementById('tab-schedule');
-                    tabSchedule.classList.add('bg-indigo-500', 'text-white');
-                }
+            showAdminPanel() {
+                const adminTabs = document.getElementById('admin-tabs');
+                const adminContent = document.getElementById('admin-content');
+                adminTabs.classList.remove('hidden');
+                adminContent.classList.remove('hidden');
+
+                const logoutBtn = document.getElementById('logout-btn');
+                logoutBtn.addEventListener('click', () => {
+                    this.isAdmin = false;
+                    adminTabs.classList.add('hidden');
+                    adminContent.classList.add('hidden');
+                });
             },
 
-            logout() {
-                this.isAdmin = false;
-                document.getElementById('admin-tabs').classList.add('hidden');
-                this.setupEmployeeSelector();
-                this.loadSchedule(this.currentWeekStart);
-                this.renderSchedule();
+            setupAdminTabs() {
+                const scheduleTab = document.getElementById('tab-schedule');
+                const employeesTab = document.getElementById('tab-employees');
+                const adminContent = document.getElementById('admin-content');
+
+                scheduleTab.addEventListener('click', () => {
+                    adminContent.innerHTML = 'Здесь вы можете редактировать график сотрудников.';
+                });
+
+                employeesTab.addEventListener('click', () => {
+                    adminContent.innerHTML = 'Здесь вы можете управлять сотрудниками.';
+                });
             }
         };
 
