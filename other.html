@@ -3,155 +3,603 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Другое</title>
-    <script src="https://unpkg.com/quagga/dist/quagga.min.js"></script>
+    <title>Work Schedule Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f5f7;
-            color: #1c1c1e;
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s;
         }
-        .navbar {
-            display: flex;
-            background: #ffffff;
-            padding: 15px;
-            border-bottom: 1px solid #d1d1d6;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        .fade-enter, .fade-leave-to {
+            opacity: 0;
         }
-        .nav-link {
-            color: #007aff;
-            text-decoration: none;
-            padding: 10px 15px;
-            font-size: 18px;
-            flex: 1;
-            text-align: center;
+        .rotate {
+            animation: spin 1s linear infinite;
         }
-        .nav-link.active {
-            font-weight: bold;
-            color: #0056b3;
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
-        .container {
-            padding: 20px;
+        .schedule-cell {
+            transition: all 0.2s ease;
         }
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+        .schedule-cell:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        .table-view {
+            display: table;
         }
-        th, td {
-            padding: 8px;
-            text-align: center;
-            border-bottom: 1px solid #e0e0e0;
+        .table-row {
+            display: table-row;
         }
-        th {
-            background-color: #f5f5f7;
-        }
-        input, button {
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 8px;
-        }
-        button {
-            background-color: #007aff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .hidden {
-            display: none;
+        .table-cell {
+            display: table-cell;
+            padding: 8px 12px;
+            border-bottom: 1px solid #e5e7eb;
         }
     </style>
 </head>
-<body>
-    <nav class="navbar">
-        <a href="index.html" class="nav-link">Коробки НП</a>
-        <a href="other.html" class="nav-link active">Другое</a>
-    </nav>
-    <div class="container">
-        <div class="tabs">
-            <button onclick="openTab('scanner')">Сканер</button>
-            <button onclick="openTab('books')">Книги</button>
-            <button onclick="openTab('shelves')">Полки</button>
-            <button onclick="openTab('settings')">Настройки</button>
-        </div>
-
-        <div id="scanner" class="tab-content">
-            <div class="card">
-                <input type="text" id="scan-input" placeholder="Введите штрихкод">
-                <button onclick="searchItem()">Поиск</button>
-                <button onclick="startScanner()">Сканировать</button>
-                <button onclick="toggleFlash()">Включить/Выключить вспышку</button>
-                <video id="camera-view" autoplay></video>
+<body class="bg-gray-50 min-h-screen">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- Auth Modal -->
+        <div v-if="showAuthModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-8 w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6 text-center">Admin Login</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Email</label>
+                    <input v-model="auth.email" type="email" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2">Password</label>
+                    <input v-model="auth.password" type="password" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-between items-center">
+                    <button @click="signInWithGoogle" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 flex items-center">
+                        <i class="fab fa-google mr-2"></i> Google
+                    </button>
+                    <button @click="login" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">Login</button>
+                </div>
             </div>
         </div>
 
-        <div id="books" class="tab-content hidden">
-            <div class="card">
-                <input type="text" id="book-search" placeholder="Поиск книги">
-                <button onclick="searchBook()">Поиск</button>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Штрихкод</th>
-                            <th>Название</th>
-                            <th>Код полки</th>
-                            <th>Местоположение</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody id="book-table"></tbody>
-                </table>
+        <!-- Loading Overlay -->
+        <div v-if="loading" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-8 rounded-lg flex flex-col items-center">
+                <i class="fas fa-spinner rotate text-4xl text-blue-500 mb-4"></i>
+                <p class="text-lg">Loading data...</p>
             </div>
         </div>
 
-        <div id="shelves" class="tab-content hidden">
-            <div class="card">
-                <input type="text" id="shelf-search" placeholder="Поиск по коду полки">
-                <button onclick="searchShelf()">Поиск</button>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Код полки</th>
-                            <th>Местоположение</th>
-                            <th>Действия</th>
-                        </tr>
-                    </thead>
-                    <tbody id="shelf-table"></tbody>
-                </table>
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">Work Schedule Manager</h1>
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <button v-if="isAdmin" @click="showAuthModal = false; isAdmin = false" class="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
+                        <i class="fas fa-user mr-2"></i> Switch to User View
+                    </button>
+                    <button v-else @click="showAuthModal = true" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        <i class="fas fa-lock mr-2"></i> Admin Login
+                    </button>
+                    
+                    <button @click="syncWithGoogleSheets" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center">
+                        <i class="fas fa-sync mr-2" :class="{'rotate': syncing}"></i> Sync
+                    </button>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <select v-model="selectedEmployee" class="appearance-none bg-white border rounded-lg px-4 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Employees</option>
+                            <option v-for="employee in employees" :value="employee.id">{{ employee.name }}</option>
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <button @click="prevWeek" class="p-2 rounded-lg hover:bg-gray-200">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span class="font-medium">{{ currentWeekStart.toLocaleDateString() }} - {{ currentWeekEnd.toLocaleDateString() }}</span>
+                        <button @click="nextWeek" class="p-2 rounded-lg hover:bg-gray-200">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Admin View -->
+        <div v-if="isAdmin" class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+            <div class="p-4 bg-gray-100 border-b flex justify-between items-center">
+                <h2 class="text-xl font-bold">Admin Panel</h2>
+                <button @click="showAddEmployeeModal = true" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                    <i class="fas fa-plus mr-2"></i> Add Employee
+                </button>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <div class="table-view w-full">
+                    <div class="table-row bg-gray-100">
+                        <div class="table-cell font-medium text-gray-700">Employee</div>
+                        <div v-for="day in weekDays" class="table-cell text-center font-medium text-gray-700">
+                            {{ day.name }}<br>
+                            <span class="text-sm font-normal">{{ day.date }}</span>
+                        </div>
+                        <div class="table-cell font-medium text-gray-700">Actions</div>
+                    </div>
+                    
+                    <div v-for="employee in employees" class="table-row hover:bg-gray-50">
+                        <div class="table-cell whitespace-nowrap">
+                            <div v-if="editingEmployee === employee.id" class="flex items-center">
+                                <input v-model="employee.name" @blur="saveEmployeeName(employee)" 
+                                       class="border-b-2 border-blue-500 focus:outline-none mr-2" />
+                                <button @click="saveEmployeeName(employee)" class="text-green-500 hover:text-green-700">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                            </div>
+                            <div v-else class="flex items-center">
+                                <span>{{ employee.name }}</span>
+                                <button @click="startEditingEmployee(employee)" class="ml-2 text-blue-500 hover:text-blue-700">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div v-for="day in weekDays" class="table-cell text-center">
+                            <div @click="toggleWorkDay(employee, day.date)" 
+                                 class="schedule-cell cursor-pointer p-3 rounded-lg"
+                                 :class="{
+                                     'bg-green-100': isWorkDay(employee, day.date),
+                                     'bg-red-100': !isWorkDay(employee, day.date)
+                                 }">
+                                <span v-if="isWorkDay(employee, day.date)" class="font-medium text-green-800">Work</span>
+                                <span v-else class="font-medium text-red-800">Day Off</span>
+                                
+                                <div v-if="isWorkDay(employee, day.date)" class="mt-2">
+                                    <div class="flex items-center justify-center mb-1">
+                                        <input type="checkbox" :id="`overtime-${employee.id}-${day.date}`" 
+                                               v-model="getOvertimeStatus(employee, day.date)"
+                                               @change="toggleOvertime(employee, day.date)"
+                                               class="mr-2">
+                                        <label :for="`overtime-${employee.id}-${day.date}`">Overtime</label>
+                                    </div>
+                                    
+                                    <div v-if="getOvertimeStatus(employee, day.date)" class="flex items-center justify-center">
+                                        <input type="number" v-model="getOvertimeHours(employee, day.date)" 
+                                               @change="updateOvertime(employee, day.date)"
+                                               min="0" max="24" class="w-12 border rounded px-1 mr-1">
+                                        <span>:</span>
+                                        <input type="number" v-model="getOvertimeMinutes(employee, day.date)" 
+                                               @change="updateOvertime(employee, day.date)"
+                                               min="0" max="59" class="w-12 border rounded px-1 ml-1">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="table-cell">
+                            <button @click="confirmDeleteEmployee(employee)" class="text-red-500 hover:text-red-700">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-gray-50 px-6 py-4 flex justify-end">
+                <button @click="saveChanges" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center">
+                    <i class="fas fa-save mr-2"></i> Save Changes
+                </button>
             </div>
         </div>
 
-        <div id="settings" class="tab-content hidden">
-            <div class="card">
-                <button onclick="exportCSV()">Сохранить данные</button>
-                <input type="file" id="import-file">
-                <button onclick="importCSV()">Импорт</button>
+        <!-- Add Employee Modal -->
+        <div v-if="showAddEmployeeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-8 w-full max-w-md">
+                <h2 class="text-2xl font-bold mb-6 text-center">Add New Employee</h2>
+                <div class="mb-4">
+                    <label class="block text-gray-700 mb-2">Employee Name</label>
+                    <input v-model="newEmployee.name" type="text" class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button @click="showAddEmployeeModal = false" class="px-4 py-2 bg-gray-300 rounded-lg hover:bg-gray-400">
+                        Cancel
+                    </button>
+                    <button @click="addEmployee" class="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                        Add
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- User View -->
+        <div v-if="!isAdmin">
+            <div v-if="selectedEmployee === 'all'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="employee in employees" class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="px-6 py-4 bg-gray-100 border-b flex justify-between items-center">
+                        <h3 class="font-bold text-lg">{{ employee.name }}</h3>
+                        <button @click="startEditingEmployee(employee)" class="text-blue-500 hover:text-blue-700">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </div>
+                    <div class="p-6">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div v-for="day in weekDays" class="flex items-center">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center mr-2"
+                                     :class="{
+                                         'bg-green-100 text-green-800': isWorkDay(employee, day.date),
+                                         'bg-red-100 text-red-800': !isWorkDay(employee, day.date)
+                                     }">
+                                    <i v-if="isWorkDay(employee, day.date)" class="fas fa-briefcase text-xs"></i>
+                                    <i v-else class="fas fa-umbrella-beach text-xs"></i>
+                                </div>
+                                <div>
+                                    <div class="text-sm font-medium">{{ day.nameShort }}</div>
+                                    <div v-if="isWorkDay(employee, day.date) && getOvertimeStatus(employee, day.date)" 
+                                         class="text-xs text-blue-600">
+                                        +{{ getOvertimeHours(employee, day.date) }}h {{ getOvertimeMinutes(employee, day.date) }}m
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div v-else class="bg-white rounded-xl shadow-md overflow-hidden">
+                <div class="px-6 py-4 bg-gray-100 border-b flex justify-between items-center">
+                    <h3 class="font-bold text-lg">{{ getSelectedEmployeeName() }}</h3>
+                    <button @click="startEditingEmployee(getSelectedEmployee())" class="text-blue-500 hover:text-blue-700">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
+                        <div v-for="day in weekDays" class="border rounded-lg p-4 text-center">
+                            <div class="font-bold mb-2">{{ day.name }}</div>
+                            <div class="text-sm mb-1">{{ day.date }}</div>
+                            <div class="mt-4">
+                                <span v-if="isWorkDay(getSelectedEmployee(), day.date)" 
+                                      class="inline-block px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-800">
+                                    Work Day
+                                </span>
+                                <span v-else 
+                                      class="inline-block px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-800">
+                                    Day Off
+                                </span>
+                            </div>
+                            <div v-if="isWorkDay(getSelectedEmployee(), day.date) && getOvertimeStatus(getSelectedEmployee(), day.date)" 
+                                 class="mt-3 bg-blue-50 rounded-lg p-2 text-sm">
+                                <div class="font-medium text-blue-800">Overtime</div>
+                                <div class="text-blue-600">
+                                    {{ getOvertimeHours(getSelectedEmployee(), day.date) }}h {{ getOvertimeMinutes(getSelectedEmployee(), day.date) }}m
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Summary Stats -->
+        <div v-if="!isAdmin && selectedEmployee !== 'all'" class="mt-8 bg-white rounded-xl shadow-md p-6">
+            <h3 class="font-bold text-lg mb-4">Summary for {{ getSelectedEmployeeName() }}</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm text-gray-500">Work Days</div>
+                    <div class="text-2xl font-bold">{{ countWorkDays(getSelectedEmployee()) }}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm text-gray-500">Days Off</div>
+                    <div class="text-2xl font-bold">{{ 7 - countWorkDays(getSelectedEmployee()) }}</div>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="text-sm text-gray-500">Total Overtime</div>
+                    <div class="text-2xl font-bold">{{ formatTotalOvertime(getSelectedEmployee()) }}</div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        function openTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
-        }
-        function exportCSV() {
-            alert("Сохранение данных в CSV");
-        }
-        function importCSV() {
-            alert("Импорт данных из CSV");
-        }
+        const app = new Vue({
+            el: '#app',
+            data: {
+                loading: false,
+                syncing: false,
+                showAuthModal: false,
+                showAddEmployeeModal: false,
+                isAdmin: false,
+                auth: {
+                    email: '',
+                    password: ''
+                },
+                newEmployee: {
+                    name: ''
+                },
+                selectedEmployee: 'all',
+                currentWeekStart: new Date(),
+                employees: [
+                    { id: 1, name: 'John Doe', schedule: {} },
+                    { id: 2, name: 'Jane Smith', schedule: {} },
+                    { id: 3, name: 'Mike Johnson', schedule: {} },
+                    { id: 4, name: 'Sarah Williams', schedule: {} },
+                    { id: 5, name: 'David Brown', schedule: {} }
+                ],
+                editingEmployee: null,
+                changes: [],
+                gapiLoaded: false
+            },
+            created() {
+                this.initWeek();
+                this.loadFromLocalStorage();
+                this.initGoogleAPI();
+            },
+            computed: {
+                weekDays() {
+                    const days = [];
+                    const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const date = new Date(this.currentWeekStart);
+                    
+                    for (let i = 0; i < 7; i++) {
+                        const dayDate = new Date(date);
+                        dayDate.setDate(date.getDate() + i);
+                        
+                        days.push({
+                            name: daysOfWeek[dayDate.getDay()],
+                            nameShort: daysOfWeek[dayDate.getDay()].substring(0, 3),
+                            date: this.formatDate(dayDate),
+                            dayObj: new Date(dayDate)
+                        });
+                    }
+                    
+                    return days;
+                },
+                currentWeekEnd() {
+                    const endDate = new Date(this.currentWeekStart);
+                    endDate.setDate(endDate.getDate() + 6);
+                    return endDate;
+                }
+            },
+            methods: {
+                initWeek() {
+                    const today = new Date();
+                    const dayOfWeek = today.getDay();
+                    const diff = today.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // adjust for Sunday
+                    this.currentWeekStart = new Date(today.setDate(diff));
+                },
+                formatDate(date) {
+                    return date.toISOString().split('T')[0];
+                },
+                prevWeek() {
+                    const prevWeek = new Date(this.currentWeekStart);
+                    prevWeek.setDate(prevWeek.getDate() - 7);
+                    this.currentWeekStart = prevWeek;
+                },
+                nextWeek() {
+                    const nextWeek = new Date(this.currentWeekStart);
+                    nextWeek.setDate(nextWeek.getDate() + 7);
+                    this.currentWeekStart = nextWeek;
+                },
+                getSelectedEmployee() {
+                    return this.employees.find(e => e.id == this.selectedEmployee);
+                },
+                getSelectedEmployeeName() {
+                    const emp = this.getSelectedEmployee();
+                    return emp ? emp.name : '';
+                },
+                isWorkDay(employee, date) {
+                    if (!employee.schedule[date]) return false;
+                    return employee.schedule[date].isWorkDay !== false;
+                },
+                getOvertimeStatus(employee, date) {
+                    if (!employee.schedule[date]) return false;
+                    return employee.schedule[date].overtime || false;
+                },
+                getOvertimeHours(employee, date) {
+                    if (!employee.schedule[date] || !employee.schedule[date].overtimeHours) return 0;
+                    return employee.schedule[date].overtimeHours;
+                },
+                getOvertimeMinutes(employee, date) {
+                    if (!employee.schedule[date] || !employee.schedule[date].overtimeMinutes) return 0;
+                    return employee.schedule[date].overtimeMinutes;
+                },
+                toggleWorkDay(employee, date) {
+                    if (!employee.schedule[date]) {
+                        this.$set(employee.schedule, date, {
+                            isWorkDay: true,
+                            overtime: false,
+                            overtimeHours: 0,
+                            overtimeMinutes: 0
+                        });
+                    } else {
+                        employee.schedule[date].isWorkDay = !employee.schedule[date].isWorkDay;
+                    }
+                    
+                    this.recordChange(employee.id, date, 'isWorkDay', employee.schedule[date].isWorkDay);
+                },
+                toggleOvertime(employee, date) {
+                    if (!employee.schedule[date]) {
+                        this.$set(employee.schedule, date, {
+                            isWorkDay: true,
+                            overtime: true,
+                            overtimeHours: 0,
+                            overtimeMinutes: 0
+                        });
+                    } else {
+                        employee.schedule[date].overtime = !employee.schedule[date].overtime;
+                    }
+                    
+                    this.recordChange(employee.id, date, 'overtime', employee.schedule[date].overtime);
+                },
+                updateOvertime(employee, date) {
+                    if (!employee.schedule[date]) {
+                        this.$set(employee.schedule, date, {
+                            isWorkDay: true,
+                            overtime: true,
+                            overtimeHours: this.getOvertimeHours(employee, date),
+                            overtimeMinutes: this.getOvertimeMinutes(employee, date)
+                        });
+                    } else {
+                        employee.schedule[date].overtimeHours = this.getOvertimeHours(employee, date);
+                        employee.schedule[date].overtimeMinutes = this.getOvertimeMinutes(employee, date);
+                    }
+                    
+                    this.recordChange(employee.id, date, 'overtimeHours', employee.schedule[date].overtimeHours);
+                    this.recordChange(employee.id, date, 'overtimeMinutes', employee.schedule[date].overtimeMinutes);
+                },
+                startEditingEmployee(employee) {
+                    this.editingEmployee = employee.id;
+                },
+                saveEmployeeName(employee) {
+                    this.editingEmployee = null;
+                    this.recordChange(employee.id, null, 'name', employee.name);
+                },
+                addEmployee() {
+                    if (!this.newEmployee.name.trim()) return;
+                    
+                    const newId = this.employees.length > 0 
+                        ? Math.max(...this.employees.map(e => e.id)) + 1 
+                        : 1;
+                    
+                    this.employees.push({
+                        id: newId,
+                        name: this.newEmployee.name,
+                        schedule: {}
+                    });
+                    
+                    this.newEmployee.name = '';
+                    this.showAddEmployeeModal = false;
+                    this.recordChange(newId, null, 'name', this.newEmployee.name);
+                },
+                confirmDeleteEmployee(employee) {
+                    if (confirm(`Are you sure you want to delete ${employee.name}?`)) {
+                        this.deleteEmployee(employee);
+                    }
+                },
+                deleteEmployee(employee) {
+                    this.employees = this.employees.filter(e => e.id !== employee.id);
+                    this.recordChange(employee.id, null, 'delete', true);
+                },
+                recordChange(employeeId, date, field, value) {
+                    // Avoid duplicates
+                    const existingChangeIndex = this.changes.findIndex(c => 
+                        c.employeeId === employeeId && c.date === date && c.field === field);
+                    
+                    if (existingChangeIndex !== -1) {
+                        this.changes[existingChangeIndex].value = value;
+                    } else {
+                        this.changes.push({
+                            employeeId,
+                            date,
+                            field,
+                            value,
+                            timestamp: new Date()
+                        });
+                    }
+                },
+                login() {
+                    // In a real app, this would verify credentials with a backend
+                    this.loading = true;
+                    setTimeout(() => {
+                        this.isAdmin = true;
+                        this.showAuthModal = false;
+                        this.loading = false;
+                    }, 1000);
+                },
+                signInWithGoogle() {
+                    if (!this.gapiLoaded) {
+                        alert('Google API not loaded yet');
+                        return;
+                    }
+                    
+                    // In a real app, this would use Google OAuth
+                    this.loading = true;
+                    setTimeout(() => {
+                        this.isAdmin = true;
+                        this.showAuthModal = false;
+                        this.loading = false;
+                    }, 1000);
+                },
+                saveChanges() {
+                    this.loading = true;
+                    
+                    // In a real app, this would save to Google Sheets
+                    setTimeout(() => {
+                        this.saveToLocalStorage();
+                        this.changes = [];
+                        this.loading = false;
+                        
+                        // Show success message
+                        const toast = document.createElement('div');
+                        toast.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg';
+                        toast.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Changes saved successfully!';
+                        document.body.appendChild(toast);
+                        
+                        setTimeout(() => {
+                            toast.remove();
+                        }, 3000);
+                    }, 1500);
+                },
+                syncWithGoogleSheets() {
+                    this.syncing = true;
+                    
+                    // In a real app, this would sync with Google Sheets
+                    setTimeout(() => {
+                        this.syncing = false;
+                        
+                        // Show success message
+                        const toast = document.createElement('div');
+                        toast.className = 'fixed bottom-4 right-4 bg-blue-500 text-white px-6 py-3 rounded-lg shadow-lg';
+                        toast.innerHTML = '<i class="fas fa-check-circle mr-2"></i> Sync completed!';
+                        document.body.appendChild(toast);
+                        
+                        setTimeout(() => {
+                            toast.remove();
+                        }, 3000);
+                    }, 2000);
+                },
+                saveToLocalStorage() {
+                    localStorage.setItem('workScheduleData', JSON.stringify(this.employees));
+                },
+                loadFromLocalStorage() {
+                    const data = localStorage.getItem('workScheduleData');
+                    if (data) {
+                        this.employees = JSON.parse(data);
+                    }
+                },
+                countWorkDays(employee) {
+                    return this.weekDays.filter(day => this.isWorkDay(employee, day.date)).length;
+                },
+                formatTotalOvertime(employee) {
+                    let totalMinutes = 0;
+                    
+                    this.weekDays.forEach(day => {
+                        if (this.isWorkDay(employee, day.date) && this.getOvertimeStatus(employee, day.date)) {
+                            totalMinutes += parseInt(this.getOvertimeHours(employee, day.date)) * 60;
+                            totalMinutes += parseInt(this.getOvertimeMinutes(employee, day.date));
+                        }
+                    });
+                    
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60;
+                    
+                    return `${hours}h ${minutes}m`;
+                },
+                initGoogleAPI() {
+                    // In a real app, this would initialize the Google API client
+                    setTimeout(() => {
+                        this.gapiLoaded = true;
+                    }, 1000);
+                }
+            }
+        });
     </script>
 </body>
 </html>
