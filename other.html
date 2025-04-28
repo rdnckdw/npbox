@@ -1,179 +1,314 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Schedule App</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-
-        th {
-            background-color: #f4f4f4;
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header .week-display {
-            font-size: 20px;
-            font-weight: bold;
-        }
-
-        .header .navigation-buttons button {
-            padding: 10px;
-            margin: 0 5px;
-            font-size: 16px;
-        }
-
-        .status-toggle {
-            cursor: pointer;
-            color: green;
-            font-weight: bold;
-        }
-
-        /* Mobile responsiveness */
-        @media (max-width: 768px) {
-            table {
-                font-size: 14px;
-            }
-
-            th, td {
-                padding: 6px;
-            }
-
-            .status-toggle {
-                font-size: 14px;
-            }
-
-            .header .week-display {
-                font-size: 18px;
-            }
-
-            .navigation-buttons button {
-                font-size: 14px;
-                padding: 8px;
-            }
-        }
-    </style>
+    <title>График сотрудников</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4">
+        <!-- Заголовок и кнопка админ-панели -->
+        <div class="flex justify-between mb-6">
+            <h1 class="text-2xl font-bold text-indigo-700">График сотрудников</h1>
+            <button id="admin-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Админ-панель</button>
+        </div>
 
-<div class="container">
-    <div class="header">
-        <div class="week-display" id="weekDisplay">Week of: May 2025</div>
-        <div class="navigation-buttons">
-            <button onclick="navigateWeek(-1)">Previous Week</button>
-            <button onclick="navigateWeek(1)">Next Week</button>
+        <!-- Выбор сотрудника и переключение недель -->
+        <div class="flex items-center space-x-4 mb-6">
+            <select id="employee-select" class="border rounded-lg p-2"></select>
+            <button id="prev-week" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-full"><i class="fas fa-chevron-left"></i></button>
+            <div id="week-display" class="font-semibold"></div>
+            <button id="next-week" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-full"><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <!-- Вкладки админ-панели -->
+        <div id="admin-tabs" class="hidden mb-4 space-x-4">
+            <button id="tab-schedule" class="bg-indigo-500 text-white px-4 py-2 rounded">График</button>
+            <button id="tab-employees" class="bg-gray-300 text-gray-700 px-4 py-2 rounded">Сотрудники</button>
+            <button id="tab-overtime" class="bg-gray-300 text-gray-700 px-4 py-2 rounded">Овертаймы</button>
+            <button id="logout-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg">Выйти из админки</button>
+        </div>
+
+        <!-- Контейнер для графика сотрудников -->
+        <div id="schedule-container" class="bg-white shadow rounded-lg overflow-x-auto"></div>
+        <div id="admin-content"></div>
+    </div>
+
+    <!-- Модальное окно для входа -->
+    <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+        <div class="bg-white p-6 rounded-lg w-80 space-y-4">
+            <h2 class="text-xl font-bold">Вход в админ-панель</h2>
+            <input id="login-username" type="text" placeholder="Логин" class="border p-2 w-full rounded-lg">
+            <input id="login-password" type="password" placeholder="Пароль" class="border p-2 w-full rounded-lg">
+            <button id="login-submit" class="w-full bg-green-600 text-white py-2 rounded-lg">Войти</button>
+            <button id="login-cancel" class="w-full bg-gray-300 py-2 rounded-lg">Отмена</button>
+            <p id="login-error" class="text-red-500 text-center hidden">Неверный логин или пароль!</p>
         </div>
     </div>
 
-    <table id="scheduleTable">
-        <thead>
-            <tr>
-                <th>Employee Name</th>
-                <th>Date</th>
-                <th>Status</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- Rows will be dynamically added here -->
-        </tbody>
-    </table>
-</div>
+    <!-- Форма для добавления нового сотрудника -->
+    <div id="add-employee-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+        <div class="bg-white p-6 rounded-lg w-80 space-y-4">
+            <h2 class="text-xl font-bold">Добавить сотрудника</h2>
+            <input id="new-employee-name" type="text" placeholder="Имя сотрудника" class="border p-2 w-full rounded-lg">
+            <button id="save-employee-btn" class="w-full bg-blue-600 text-white py-2 rounded-lg">Сохранить</button>
+            <button id="cancel-add-employee-btn" class="w-full bg-gray-300 py-2 rounded-lg">Отмена</button>
+        </div>
+    </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script>
-    const supabase = createClient('https://brhrqswautuamwkworrf.supabase.co', 'your_public_anon_key');  // replace with your actual credentials
-    let currentWeekStart = new Date('2025-05-01');  // Example start date of the first week
+    <script>
+        // Конфигурация Supabase
+        const SUPABASE_CONFIG = {
+            url: 'https://brhrqswautuamwkworrf.supabase.co',
+            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyaHJxc3dhdXR1YW13a3dvcnJmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTgyNTk3NSwiZXhwIjoyMDYxNDAxOTc1fQ.HBxafrvjO2-PnrBQp7Obc5dFFZWO_p5DQySUDZu-IfI'
+        };
 
-    async function loadSchedule() {
-        try {
-            const { data, error } = await supabase
-                .from('schedule')
-                .select('employee_id, date, is_working')
-                .gte('date', currentWeekStart.toISOString())
-                .lt('date', new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString());
+        const App = {
+            supabase: null,
+            currentWeekStart: null,
+            employees: [],
+            schedules: {},
+            isAdmin: false,
+            selectedEmployeeId: 'all',
 
-            if (error) throw error;
+            // Инициализация приложения
+            async init() {
+                try {
+                    this.supabase = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
+                    this.currentWeekStart = this.getMonday(new Date());
+                    await this.loadEmployees();
+                    this.setupEmployeeSelector();
+                    await this.loadSchedule(this.currentWeekStart);
+                    this.renderSchedule();
+                    this.setupNavigation();
+                    this.setupAdminLogin();
+                    this.setupAdminTabs();
+                    console.log('Приложение успешно инициализировано');
+                } catch (error) {
+                    console.error('Ошибка инициализации приложения:', error);
+                }
+            },
 
-            const tableBody = document.querySelector('#scheduleTable tbody');
-            tableBody.innerHTML = '';  // Clear existing rows
+            // Получаем понедельник текущей недели
+            getMonday(date) {
+                const d = new Date(date);
+                const day = d.getDay();
+                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                return new Date(d.setDate(diff));
+            },
 
-            data.forEach((row) => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${row.employee_id}</td>
-                    <td>${row.date}</td>
-                    <td><span class="status-toggle" onclick="toggleWorkStatus('${row.employee_id}', '${row.date}')">${row.is_working ? 'Working' : 'Off'}</span></td>
-                `;
-                tableBody.appendChild(tr);
-            });
-        } catch (error) {
-            console.error('Error loading schedule:', error);
-        }
-    }
+            // Загрузка сотрудников
+            async loadEmployees() {
+                try {
+                    const { data, error } = await this.supabase
+                        .from('employees')
+                        .select('*')
+                        .order('name', { ascending: true });
 
-    async function toggleWorkStatus(employeeId, date) {
-        try {
-            const { data, error } = await supabase
-                .from('schedule')
-                .upsert([
-                    { employee_id: employeeId, date: date, is_working: true }  // This will toggle the status
-                ], { onConflict: ['employee_id', 'date'] });
+                    if (error) throw error;
+                    this.employees = data;
+                } catch (error) {
+                    console.error('Ошибка загрузки сотрудников:', error);
+                }
+            },
 
-            if (error) throw error;
+            // Настройка выбора сотрудника
+            setupEmployeeSelector() {
+                const employeeSelect = document.getElementById('employee-select');
+                employeeSelect.innerHTML = '<option value="all">Все сотрудники</option>';
 
-            // Refresh the schedule after update
-            loadSchedule();
-        } catch (error) {
-            console.error('Error saving status:', error);
-        }
-    }
+                this.employees.forEach(emp => {
+                    const option = document.createElement('option');
+                    option.value = emp.id;
+                    option.textContent = emp.name;
+                    employeeSelect.appendChild(option);
+                });
 
-    function navigateWeek(direction) {
-        currentWeekStart.setDate(currentWeekStart.getDate() + direction * 7);
-        updateWeekDisplay();
-        loadSchedule();
-    }
+                // Обработчик изменения выбора сотрудника
+                employeeSelect.addEventListener('change', (event) => {
+                    this.selectedEmployeeId = event.target.value;
+                    this.renderSchedule();
+                });
+            },
 
-    function updateWeekDisplay() {
-        const startDate = currentWeekStart.toLocaleDateString();
-        const endDate = new Date(currentWeekStart.getTime() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString();
-        document.getElementById('weekDisplay').textContent = `Week of: ${startDate} to ${endDate}`;
-    }
+            // Загрузка графика
+            async loadSchedule(weekStart) {
+                try {
+                    const start = weekStart.toISOString().split('T')[0];
+                    const end = new Date(weekStart.getTime() + 6 * 86400000).toISOString().split('T')[0];
 
-    // Initial Load
-    updateWeekDisplay();
-    loadSchedule();
+                    const { data, error } = await this.supabase
+                        .from('schedule')
+                        .select('employee_id, date, is_working')
+                        .gte('date', start)
+                        .lte('date', end);
 
-</script>
+                    if (error) throw error;
 
+                    this.schedules = {};
+                    this.employees.forEach(e => this.schedules[e.id] = {});
+
+                    data.forEach(r => {
+                        if (this.schedules[r.employee_id]) {
+                            this.schedules[r.employee_id][r.date] = r.is_working;
+                        }
+                    });
+                } catch (error) {
+                    console.error('Ошибка загрузки графика:', error);
+                }
+            },
+
+            // Отображение графика
+            renderSchedule() {
+                const container = document.getElementById('schedule-container');
+                const weekDates = [...Array(7)].map((_, i) => {
+                    const day = new Date(this.currentWeekStart.getTime() + i * 86400000);
+                    return {
+                        date: day.toISOString().split('T')[0],
+                        dayName: day.toLocaleDateString('ru-RU', { weekday: 'short' })
+                    };
+                });
+
+                let html = `<table class="min-w-full"><thead><tr><th class="p-3 text-left">Сотрудник</th>`;
+                weekDates.forEach(day => {
+                    html += `<th class="p-3 text-center">${day.dayName}<br>${day.date.split('-')[2]}</th>`;
+                });
+                html += `</tr></thead><tbody>`;
+
+                const employeesToShow = this.selectedEmployeeId === 'all'
+                    ? this.employees
+                    : this.employees.filter(e => e.id === this.selectedEmployeeId);
+
+                employeesToShow.forEach(emp => {
+                    html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
+                    weekDates.forEach(day => {
+                        const isWorking = this.schedules[emp.id] && this.schedules[emp.id][day.date];
+                        const status = isWorking ? 'Работает' : 'Отдыхает';
+                        const bgColor = isWorking ? 'bg-green-100' : 'bg-red-100';
+
+                        if (this.isAdmin) {
+                            html += `<td class="p-3 text-center ${bgColor}" onclick="App.toggleWorkStatus('${emp.id}', '${day.date}')">${status}</td>`;
+                        } else {
+                            html += `<td class="p-3 text-center ${bgColor}">${status}</td>`;
+                        }
+                    });
+                    html += `</tr>`;
+                });
+
+                container.innerHTML = html;
+                this.updateWeekDisplay();
+            },
+
+            // Переключение статуса работы
+            async toggleWorkStatus(employeeId, date) {
+                const currentStatus = this.schedules[employeeId] && this.schedules[employeeId][date];
+                const newStatus = currentStatus ? false : true;
+
+                await this.saveSchedule(employeeId, date, newStatus);
+                this.schedules[employeeId][date] = newStatus;
+                this.renderSchedule();
+            },
+
+            // Сохранение статуса работы
+            async saveSchedule(employeeId, date, isWorking) {
+                try {
+                    // Проверяем, существует ли уже запись для этого сотрудника и этой даты
+                    const { data, error } = await this.supabase
+                        .from('schedule')
+                        .select('employee_id, date')
+                        .eq('employee_id', employeeId)
+                        .eq('date', date);
+
+                    if (error) throw error;
+
+                    // Если запись существует, обновляем статус
+                    if (data.length > 0) {
+                        const { updateError } = await this.supabase
+                            .from('schedule')
+                            .update({ is_working: isWorking })
+                            .eq('employee_id', employeeId)
+                            .eq('date', date);
+
+                        if (updateError) throw updateError;
+                        console.log(`Статус для сотрудника ${employeeId} на ${date} обновлен.`);
+                    } else {
+                        // Если записи нет, создаем новую
+                        const { insertError } = await this.supabase
+                            .from('schedule')
+                            .insert([{ employee_id: employeeId, date: date, is_working: isWorking }]);
+
+                        if (insertError) throw insertError;
+                        console.log(`Статус для сотрудника ${employeeId} на ${date} добавлен.`);
+                    }
+                } catch (error) {
+                    console.error('Ошибка сохранения статуса работы:', error);
+                }
+            },
+
+            // Обновление отображения недели
+            updateWeekDisplay() {
+                const weekDisplay = document.getElementById('week-display');
+                const startDate = this.currentWeekStart.toISOString().split('T')[0];
+                const endDate = new Date(this.currentWeekStart.getTime() + 6 * 86400000)
+                    .toISOString().split('T')[0];
+                weekDisplay.textContent = `${startDate} - ${endDate}`;
+            },
+
+            // Переключение на предыдущую неделю
+            prevWeek() {
+                this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
+                this.loadSchedule(this.currentWeekStart).then(() => this.renderSchedule());
+            },
+
+            // Переключение на следующую неделю
+            nextWeek() {
+                this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
+                this.loadSchedule(this.currentWeekStart).then(() => this.renderSchedule());
+            },
+
+            // Настройка навигации по неделям
+            setupNavigation() {
+                document.getElementById('prev-week').addEventListener('click', () => this.prevWeek());
+                document.getElementById('next-week').addEventListener('click', () => this.nextWeek());
+            },
+
+            // Вход в админ-панель
+            setupAdminLogin() {
+                const adminBtn = document.getElementById('admin-btn');
+                adminBtn.addEventListener('click', () => {
+                    document.getElementById('login-modal').classList.remove('hidden');
+                });
+
+                document.getElementById('login-submit').addEventListener('click', async () => {
+                    const username = document.getElementById('login-username').value;
+                    const password = document.getElementById('login-password').value;
+                    
+                    if (username === 'admin' && password === 'admin') {
+                        this.isAdmin = true;
+                        document.getElementById('login-modal').classList.add('hidden');
+                        document.getElementById('admin-tabs').classList.remove('hidden');
+                        this.renderSchedule();
+                    } else {
+                        document.getElementById('login-error').classList.remove('hidden');
+                    }
+                });
+
+                document.getElementById('login-cancel').addEventListener('click', () => {
+                    document.getElementById('login-modal').classList.add('hidden');
+                });
+            },
+
+            // Настройка вкладок админ-панели
+            setupAdminTabs() {
+                document.getElementById('tab-schedule').addEventListener('click', () => this.renderSchedule());
+            },
+        };
+
+        // Инициализация приложения
+        App.init();
+    </script>
 </body>
 </html>
