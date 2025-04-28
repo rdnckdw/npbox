@@ -115,6 +115,25 @@
                 }
             },
 
+            // Настройка выбора сотрудника
+            setupEmployeeSelector() {
+                const employeeSelect = document.getElementById('employee-select');
+                employeeSelect.innerHTML = '<option value="all">Все сотрудники</option>';
+
+                this.employees.forEach(emp => {
+                    const option = document.createElement('option');
+                    option.value = emp.id;
+                    option.textContent = emp.name;
+                    employeeSelect.appendChild(option);
+                });
+
+                // Обработчик изменения выбора сотрудника
+                employeeSelect.addEventListener('change', (event) => {
+                    this.selectedEmployeeId = event.target.value;
+                    this.renderSchedule();
+                });
+            },
+
             // Загрузка графика
             async loadSchedule(weekStart) {
                 try {
