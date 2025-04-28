@@ -159,9 +159,13 @@ const App = {
         const employeesToShow = this.selectedEmployeeId === 'all' ? this.employees : this.employees.filter(e => e.id === this.selectedEmployeeId);
 
         employeesToShow.forEach(emp => {
-            html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
+            html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}`;
+            if (this.isAdmin) {
+                html += ` <span onclick="App.editEmployee('${emp.id}', '${emp.name}')" class="text-blue-600 cursor-pointer ml-2">✏️</span>`;
+            }
+            html += `</td>`;
             weekDates.forEach(day => {
-                const isWorking = this.schedules[emp.id][day.date];
+                const isWorking = (this.schedules[emp.id][day.date] !== undefined) ? this.schedules[emp.id][day.date] : true;
                 const comment = this.comments[emp.id][day.date] || '';
                 const bgColor = isWorking ? 'bg-green-100' : 'bg-red-100';
                 const todayHighlight = day.date === today ? 'bg-blue-100' : '';
@@ -236,9 +240,12 @@ const App = {
     },
 
     async toggleWorkStatus(empId, date) {
-        const currentStatus = this.schedules[empId][date] || false;
+        const currentStatus = (this.schedules[empId][date] !== undefined) ? this.schedules[empId][date] : true;
         const newStatus = !currentStatus;
-        await this.supabase.from('schedule').upsert([{ employee_id: empId, date: date, is_working: newStatus, comment: this.comments[empId][date] }]);
+        await this.supabase.from('schedule').upsert(
+            [{ employee_id: empId, date: date, is_working: newStatus, comment: this.comments[empId][date] }],
+            { onConflict: ['employee_id', 'date'] }
+        );
         this.schedules[empId][date] = newStatus;
         this.renderSchedule();
     },
@@ -246,9 +253,23 @@ const App = {
     async editComment(empId, date) {
         let comment = prompt('Введите комментарий для ячейки (оставьте пустым для удаления):', this.comments[empId][date] || '');
         if (comment !== null) {
-            await this.supabase.from('schedule').upsert([{ employee_id: empId, date: date, is_working: this.schedules[empId][date], comment: comment }]);
+            await this.supabase.from('schedule').upsert(
+                [{ employee_id: empId, date: date, is_working: this.schedules[empId][date] ?? true, comment: comment }],
+                { onConflict: ['employee_id', 'date'] }
+            );
             this.comments[empId][date] = comment;
             this.renderSchedule();
+        }
+    },
+
+    async editEmployee(empId, currentName) {
+        const newName = prompt('Введите новое имя сотрудника:', currentName);
+        if (newName && newName !== currentName) {
+            await this.supabase.from('employees').update({ name: newName }).eq('id', empId);
+            await this.loadEmployees();
+            this.setupEmployeeSelector();
+            this.renderSchedule();
+            alert('Имя сотрудника успешно обновлено!');
         }
     },
 
