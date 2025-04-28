@@ -59,6 +59,25 @@
                             </select>
                         </div>
                     </div>
+<!-- Кнопка входа в админку -->
+<div class="fixed top-4 right-4">
+    <button id="admin-login-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">
+        Админ-панель
+    </button>
+</div>
+
+<!-- Модальное окно логина -->
+<div id="login-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-80">
+        <h2 class="text-2xl font-bold mb-4 text-center">Вход в админ-панель</h2>
+        <input id="admin-username" type="text" placeholder="Логин" class="w-full mb-3 px-3 py-2 border rounded-lg">
+        <input id="admin-password" type="password" placeholder="Пароль" class="w-full mb-3 px-3 py-2 border rounded-lg">
+        <button id="login-submit" class="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg">Войти</button>
+        <button id="login-cancel" class="w-full mt-2 bg-gray-300 hover:bg-gray-400 py-2 rounded-lg">Отмена</button>
+        <p id="login-error" class="text-red-500 text-sm text-center hidden mt-2">Неверные данные</p>
+    </div>
+</div>
+
                     
                     <div class="w-full md:w-auto">
                         <label class="block text-sm font-medium text-gray-700 mb-1">Неделя:</label>
@@ -356,486 +375,204 @@
             setupEventListeners();
         });
 
-        // Helper functions
-        function getMonday(date) {
-            const d = new Date(date);
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
-            return new Date(d.setDate(diff));
+      function renderSchedule() {
+    const app = document.getElementById('app');
+    let html = `
+        <h1 class="text-3xl font-bold text-indigo-700 mb-6">${isAdmin ? 'Редактирование графика' : 'График работы'}</h1>
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white shadow rounded-lg">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-2">Сотрудник</th>
+                        ${Array.from({ length: 7 }, (_, i) => `<th class="px-4 py-2">${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i]}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    employees.forEach(emp => {
+        html += `<tr class="border-t">
+                    <td class="px-4 py-2 font-medium">${emp.name}</td>`;
+        for (let i = 0; i < 7; i++) {
+            const day = new Date(currentWeekStart.getTime() + i * 86400000);
+            const dayKey = formatDateForQuery(day);
+            if (isAdmin) {
+                const checked = schedules[emp.id]?.[dayKey] ? 'checked' : '';
+                html += `<td class="px-4 py-2 text-center">
+                    <input type="checkbox" data-employee="${emp.id}" data-date="${dayKey}" ${checked}>
+                </td>`;
+            } else {
+                const isWorking = schedules[emp.id]?.[dayKey] ? '✓' : '-';
+                html += `<td class="px-4 py-2 text-center">${isWorking}</td>`;
+            }
+        }
+        html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+
+    if (isAdmin) {
+        html += `
+            <div class="mt-4 text-center">
+                <button id="save-schedule" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">Сохранить изменения</button>
+            </div>
+        `;
+    }
+
+async function saveScheduleChanges() {
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][data-employee]');
+    const updates = [];
+
+    checkboxes.forEach(cb => {
+        updates.push({
+            employee_id: cb.dataset.employee,
+            date: cb.dataset.date,
+            is_working: cb.checked
+        });
+    });
+
+    for (const update of updates) {
+        await supabase
+            .from('schedule')
+            .upsert(update, { onConflict: ['employee_id', 'date'] });
+    }
+
+    alert('График сохранен!');
+}
+
+
+    app.innerHTML = html;
+
+    if (isAdmin) {
+        document.getElementById('save-schedule').addEventListener('click', saveScheduleChanges);
+    }
+}
+
+    let currentWeekStart = getMonday(new Date());
+    let employees = [];
+    let schedules = {};
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadEmployees();
+        await loadSchedule(currentWeekStart);
+        renderSchedule();
+        setupNavigation();
+    });
+
+    function getMonday(date) {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.setDate(diff));
+    }
+
+    async function loadEmployees() {
+        const { data, error } = await supabase.from('employees').select('*').order('name', { ascending: true });
+        if (error) {
+            console.error('Ошибка загрузки сотрудников:', error);
+            return;
+        }
+        employees = data;
+    }
+
+    async function loadSchedule(weekStart) {
+        const start = formatDateForQuery(weekStart);
+        const end = formatDateForQuery(new Date(weekStart.getTime() + 6 * 86400000));
+
+        const { data, error } = await supabase
+            .from('schedule')
+            .select('employee_id, date, is_working')
+            .gte('date', start)
+            .lte('date', end);
+
+        if (error) {
+            console.error('Ошибка загрузки графика:', error);
+            return;
         }
 
-        function formatDate(date) {
-            const options = { day: 'numeric', month: 'long', year: 'numeric' };
-            return date.toLocaleDateString('ru-RU', options);
-        }
+        schedules = {};
+        employees.forEach(e => { schedules[e.id] = {}; });
+        data.forEach(record => {
+            if (schedules[record.employee_id]) {
+                schedules[record.employee_id][record.date] = record.is_working;
+            }
+        });
+    }
 
-        function getWeekDates(startDate) {
-            const dates = [];
+    function formatDateForQuery(date) {
+        return date.toISOString().split('T')[0];
+    }
+
+    function renderSchedule() {
+        const app = document.getElementById('app');
+        let html = `
+            <h1 class="text-3xl font-bold text-indigo-700 mb-6">График работы</h1>
+            <div class="overflow-x-auto">
+                <table class="min-w-full bg-white shadow rounded-lg">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-2">Сотрудник</th>
+                            ${Array.from({ length: 7 }, (_, i) => `<th class="px-4 py-2">${['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'][i]}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        employees.forEach(emp => {
+            html += `<tr class="border-t">
+                        <td class="px-4 py-2 font-medium">${emp.name}</td>`;
             for (let i = 0; i < 7; i++) {
-                const date = new Date(startDate);
-                date.setDate(date.getDate() + i);
-                dates.push(date);
+                const day = new Date(currentWeekStart.getTime() + i * 86400000);
+                const dayKey = formatDateForQuery(day);
+                const isWorking = schedules[emp.id]?.[dayKey] ? '✓' : '-';
+                html += `<td class="px-4 py-2 text-center">${isWorking}</td>`;
             }
-            return dates;
-        }
-
-        function getWeekKey(date) {
-            const d = new Date(date);
-            d.setHours(0, 0, 0, 0);
-            const year = d.getFullYear();
-            const month = d.getMonth() + 1;
-            const day = d.getDate();
-            return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-        }
-
-        // Data loading functions
-        async function loadEmployees() {
-            try {
-                const { data, error } = await supabase
-                    .from('employees')
-                    .select('*')
-                    .order('name', { ascending: true });
-                
-                if (error) throw error;
-                
-                employees = data;
-                populateEmployeeSelect();
-                populateEmployeesList();
-            } catch (error) {
-                console.error('Error loading employees:', error);
-                alert('Ошибка загрузки списка сотрудников');
-            }
-        }
-
-        async function loadSchedule(weekStart) {
-            const weekKey = getWeekKey(weekStart);
-            
-            // Check if we already have this week's data
-            if (schedules[weekKey]) {
-                return;
-            }
-            
-            const weekDates = getWeekDates(weekStart);
-            const startDate = weekDates[0];
-            const endDate = weekDates[6];
-            
-            try {
-                const { data, error } = await supabase
-                    .from('schedule')
-                    .select(`
-                        employee_id,
-                        date,
-                        is_working,
-                        employees (name)
-                    `)
-                    .gte('date', startDate.toISOString().split('T')[0])
-                    .lte('date', endDate.toISOString().split('T')[0]);
-                
-                if (error) throw error;
-                
-                // Organize data by employee
-                const scheduleData = {};
-                employees.forEach(emp => {
-                    scheduleData[emp.id] = {};
-                    weekDates.forEach(date => {
-                        scheduleData[emp.id][date.toISOString().split('T')[0]] = {
-                            is_working: false, // default
-                            employee_name: emp.name
-                        };
-                    });
-                });
-                
-                // Fill with actual data
-                data.forEach(item => {
-                    if (scheduleData[item.employee_id]) {
-                        scheduleData[item.employee_id][item.date] = {
-                            is_working: item.is_working,
-                            employee_name: item.employees.name
-                        };
-                    }
-                });
-                
-                // Store in cache
-                schedules[weekKey] = scheduleData;
-                
-                // Update UI
-                updateScheduleTable();
-                updateAdminScheduleTable();
-            } catch (error) {
-                console.error('Error loading schedule:', error);
-                alert('Ошибка загрузки графика');
-            }
-        }
-
-        async function loadOvertime(weekStart) {
-            const weekKey = getWeekKey(weekStart);
-            
-            // Check if we already have this week's data
-            if (overtimes[weekKey]) {
-                return;
-            }
-            
-            const weekDates = getWeekDates(weekStart);
-            const startDate = weekDates[0];
-            const endDate = weekDates[6];
-            
-            try {
-                const { data, error } = await supabase
-                    .from('overtime')
-                    .select(`
-                        employee_id,
-                        date,
-                        hours,
-                        employees (name)
-                    `)
-                    .gte('date', startDate.toISOString().split('T')[0])
-                    .lte('date', endDate.toISOString().split('T')[0]);
-                
-                if (error) throw error;
-                
-                // Organize data by employee
-                const overtimeData = {};
-                employees.forEach(emp => {
-                    overtimeData[emp.id] = {};
-                    weekDates.forEach(date => {
-                        overtimeData[emp.id][date.toISOString().split('T')[0]] = {
-                            hours: 0, // default
-                            employee_name: emp.name
-                        };
-                    });
-                });
-                
-                // Fill with actual data
-                data.forEach(item => {
-                    if (overtimeData[item.employee_id]) {
-                        overtimeData[item.employee_id][item.date] = {
-                            hours: item.hours,
-                            employee_name: item.employees.name
-                        };
-                    }
-                });
-                
-                // Store in cache
-                overtimes[weekKey] = overtimeData;
-                
-                // Update UI
-                updateOvertimeTable();
-            } catch (error) {
-                console.error('Error loading overtime:', error);
-                alert('Ошибка загрузки овертаймов');
-            }
-        }
-
-        // UI update functions
-        function populateEmployeeSelect() {
-            employeeSelect.innerHTML = '';
-            
-            const allOption = document.createElement('option');
-            allOption.value = 'all';
-            allOption.textContent = 'Все сотрудники';
-            employeeSelect.appendChild(allOption);
-            
-            employees.forEach(employee => {
-                const option = document.createElement('option');
-                option.value = employee.id;
-                option.textContent = employee.name;
-                employeeSelect.appendChild(option);
-            });
-        }
-
-        function populateEmployeesList() {
-            employeesList.innerHTML = '';
-            
-            if (employees.length === 0) {
-                const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="3" class="px-6 py-4 text-center text-gray-500">Нет сотрудников</td>';
-                employeesList.appendChild(row);
-                return;
-            }
-            
-            employees.forEach(employee => {
-                const row = document.createElement('tr');
-                
-                const idCell = document.createElement('td');
-                idCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
-                idCell.textContent = employee.id;
-                
-                const nameCell = document.createElement('td');
-                nameCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900';
-                
-                const nameInput = document.createElement('input');
-                nameInput.type = 'text';
-                nameInput.value = employee.name;
-                nameInput.className = 'px-2 py-1 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500';
-                nameInput.dataset.employeeId = employee.id;
-                
-                nameCell.appendChild(nameInput);
-                
-                const actionsCell = document.createElement('td');
-                actionsCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
-                
-                const saveBtn = document.createElement('button');
-                saveBtn.className = 'text-indigo-600 hover:text-indigo-900 mr-4';
-                saveBtn.innerHTML = '<i class="fas fa-save"></i> Сохранить';
-                saveBtn.dataset.employeeId = employee.id;
-                saveBtn.addEventListener('click', saveEmployeeName);
-                
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'text-red-600 hover:text-red-900';
-                deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Удалить';
-                deleteBtn.dataset.employeeId = employee.id;
-                deleteBtn.addEventListener('click', deleteEmployee);
-                
-                actionsCell.appendChild(saveBtn);
-                actionsCell.appendChild(deleteBtn);
-                
-                row.appendChild(idCell);
-                row.appendChild(nameCell);
-                row.appendChild(actionsCell);
-                
-                employeesList.appendChild(row);
-            });
-        }
-
-        function updateWeekDisplay() {
-            const weekDates = getWeekDates(currentWeekStart);
-            const startDate = weekDates[0];
-            const endDate = weekDates[6];
-            weekDisplay.textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
-        }
-function updateScheduleTable() {
-    const weekKey = getWeekKey(currentWeekStart);
-    const weekData = schedules[weekKey];
-    
-    if (!weekData) return;
-
-    scheduleBody.innerHTML = '';
-
-    const displayEmployees = selectedEmployeeId === 'all' 
-        ? employees 
-        : employees.filter(emp => emp.id === selectedEmployeeId);
-
-    displayEmployees.forEach(employee => {
-        const tr = document.createElement('tr');
-        const nameTd = document.createElement('td');
-        nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900';
-        nameTd.textContent = employee.name;
-        tr.appendChild(nameTd);
-
-        getWeekDates(currentWeekStart).forEach(date => {
-            const dayKey = date.toISOString().split('T')[0];
-            const td = document.createElement('td');
-            td.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center';
-            const dayData = weekData[employee.id][dayKey];
-            td.textContent = dayData.is_working ? '✓' : '-';
-            tr.appendChild(td);
+            html += '</tr>';
         });
 
-        scheduleBody.appendChild(tr);
-    });
-}
+        html += '</tbody></table></div>';
 
-        function updateAdminWeekDisplay() {
-            const weekDates = getWeekDates(currentWeekStart);
-            const startDate = weekDates[0];
-            const endDate = weekDates[6];
-            adminWeekDisplay.textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
-        }
-function updateAdminScheduleTable() {
-    const weekKey = getWeekKey(currentWeekStart);
-    const weekData = schedules[weekKey];
-
-function updateOvertimeTable() {
-    const weekKey = getWeekKey(currentWeekStart);
-    const weekData = overtimes[weekKey];
-    
-function setupEventListeners() {
-    prevWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() - 7);
-        reloadData();
-    });
-
-    nextWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-        reloadData();
-    });
-
-    adminPrevWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() - 7);
-        reloadData();
-    });
-
-    adminNextWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-        reloadData();
-    });
-
-    overtimePrevWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() - 7);
-        reloadData();
-    });
-
-    overtimeNextWeekBtn.addEventListener('click', () => {
-        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
-        reloadData();
-    });
-
-    employeeSelect.addEventListener('change', (e) => {
-        selectedEmployeeId = e.target.value;
-        updateScheduleTable();
-    });
-}
-async function reloadData() {
-    await loadSchedule(currentWeekStart);
-    await loadOvertime(currentWeekStart);
-    updateWeekDisplay();
-    updateAdminWeekDisplay();
-    updateOvertimeWeekDisplay();
-}
-
-async function saveEmployeeName(event) {
-    const button = event.target.closest('button');
-    const employeeId = button.dataset.employeeId;
-    const input = employeesList.querySelector(`input[data-employee-id="${employeeId}"]`);
-    const newName = input.value.trim();
-
-    if (!newName) {
-        alert('Имя не может быть пустым');
-        return;
+        app.innerHTML = html;
     }
 
-    try {
-        const { error } = await supabase
-            .from('employees')
-            .update({ name: newName })
-            .eq('id', employeeId);
-
-        if (error) throw error;
-
-        alert('Имя сотрудника обновлено');
-        await loadEmployees();
-    } catch (error) {
-        console.error('Ошибка обновления имени:', error);
-        alert('Ошибка обновления имени сотрудника');
-    }
-}
-async function deleteEmployee(event) {
-    const button = event.target.closest('button');
-    const employeeId = button.dataset.employeeId;
-
-    if (!confirm('Удалить этого сотрудника?')) return;
-
-    try {
-        const { error } = await supabase
-            .from('employees')
-            .delete()
-            .eq('id', employeeId);
-
-        if (error) throw error;
-
-        alert('Сотрудник удалён');
-        await loadEmployees();
-    } catch (error) {
-        console.error('Ошибка удаления сотрудника:', error);
-        alert('Ошибка удаления сотрудника');
-    }
-}
-
-    if (!weekData) return;
-
-    overtimeBody.innerHTML = '';
-
-    employees.forEach(employee => {
-        const tr = document.createElement('tr');
-        const nameTd = document.createElement('td');
-        nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900';
-        nameTd.textContent = employee.name;
-        tr.appendChild(nameTd);
-
-        getWeekDates(currentWeekStart).forEach(date => {
-            const dayKey = date.toISOString().split('T')[0];
-            const td = document.createElement('td');
-            td.className = 'px-6 py-4 whitespace-nowrap text-sm text-center';
-
-            const input = document.createElement('input');
-            input.type = 'number';
-            input.min = 0;
-            input.step = 0.5;
-            input.value = weekData[employee.id][dayKey].hours;
-            input.className = 'w-16 p-1 text-center border border-gray-300 rounded';
-            input.dataset.employeeId = employee.id;
-            input.dataset.date = dayKey;
-            input.addEventListener('change', (e) => {
-                weekData[e.target.dataset.employeeId][e.target.dataset.date].hours = parseFloat(e.target.value) || 0;
-            });
-
-            td.appendChild(input);
-            tr.appendChild(td);
-        });
-
-        overtimeBody.appendChild(tr);
-    });
-}
-
-    
-    if (!weekData) return;
-
-    adminScheduleBody.innerHTML = '';
-
-    employees.forEach(employee => {
-        const tr = document.createElement('tr');
-        const nameTd = document.createElement('td');
-        nameTd.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900';
-        nameTd.textContent = employee.name;
-        tr.appendChild(nameTd);
-
-        getWeekDates(currentWeekStart).forEach(date => {
-            const dayKey = date.toISOString().split('T')[0];
-            const td = document.createElement('td');
-            td.className = 'px-6 py-4 whitespace-nowrap text-sm text-center';
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.checked = weekData[employee.id][dayKey].is_working;
-            checkbox.dataset.employeeId = employee.id;
-            checkbox.dataset.date = dayKey;
-            checkbox.addEventListener('change', (e) => {
-                weekData[e.target.dataset.employeeId][e.target.dataset.date].is_working = e.target.checked;
-            });
-
-            td.appendChild(checkbox);
-            tr.appendChild(td);
-        });
-
-        adminScheduleBody.appendChild(tr);
-    });
-}
-
-
-        function updateOvertimeWeekDisplay() {
-            const weekDates = getWeekDates(currentWeekStart);
-            const startDate = weekDates[0];
-            const endDate = weekDates[6];
-            overtimeWeekDisplay.textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
-        }
-
-        function updateScheduleTable() {
-            const weekKey = getWeekKey(currentWeekStart);
-            const weekData = schedules[weekKey];
-            
-            if (!weekData) {
-                scheduleBody.innerHTML = '<tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">Данные не загружены</td></tr>';
-                return;
+    function setupNavigation() {
+        document.addEventListener('keydown', async (e) => {
+            if (e.key === 'ArrowLeft') {
+                currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+                await loadSchedule(currentWeekStart);
+                renderSchedule();
             }
-            
-            scheduleBody.innerHTML = '';
-            
-            // Filter employees based on selection
-            const displayEmployees = selectedEmployeeId === 'all' 
-                ? employees 
-                : employees.filter(emp => emp.id === selectedEmployeeId);
-            
-            if (displayEmployees.length === 0) {
-                scheduleBody.innerHTML =
+            if (e.key === 'ArrowRight') {
+                currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+                await loadSchedule(currentWeekStart);
+                renderSchedule();
+            }
+        });
+    }
+
+let isAdmin = false;
+
+document.getElementById('admin-login-btn').addEventListener('click', () => {
+    document.getElementById('login-modal').classList.remove('hidden');
+});
+
+document.getElementById('login-cancel').addEventListener('click', () => {
+    document.getElementById('login-modal').classList.add('hidden');
+});
+
+document.getElementById('login-submit').addEventListener('click', () => {
+    const username = document.getElementById('admin-username').value;
+    const password = document.getElementById('admin-password').value;
+
+    // Простая проверка (можно заменить на запрос к Supabase)
+    if (username === 'admin' && password === '1234') {
+        isAdmin = true;
+        document.getElementById('login-modal').classList.add('hidden');
+        renderSchedule(); // перерисовать расписание для редактирования
+    } else {
+        document.getElementById('login-error').classList.remove('hidden');
+    }
+});
+
                     </script>
 </html>
