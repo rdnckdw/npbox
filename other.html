@@ -198,6 +198,11 @@ function renderEmployeesAdmin() {
   container.innerHTML = html;
 }
 
+document.getElementById('admin-btn').addEventListener('click', () => {
+    document.getElementById('login-modal').classList.remove('hidden');
+});
+
+
 async function updateEmployeeName(id) {
   const input = document.querySelector(`input[data-employee-id="${id}"]`);
   const newName = input.value.trim();
