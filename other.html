@@ -72,8 +72,10 @@
             currentWeekStart: null,
             employees: [],
             schedules: {},
+            overtime: {},
             isAdmin: false,
             selectedEmployeeId: 'all',
+            currentWeekData: {},
 
             // Инициализация приложения
             async init() {
@@ -131,11 +133,28 @@
                     this.schedules = {};
                     this.employees.forEach(e => this.schedules[e.id] = {});
 
+                    // По умолчанию все работают
+                    this.employees.forEach(e => {
+                        if (!this.schedules[e.id]) {
+                            this.schedules[e.id] = {};
+                        }
+                        const weekDates = [...Array(7)].map((_, i) => {
+                            const day = new Date(weekStart.getTime() + i * 86400000);
+                            const date = day.toISOString().split('T')[0];
+                            if (!this.schedules[e.id][date]) {
+                                this.schedules[e.id][date] = true; // Все работают по умолчанию
+                            }
+                        });
+                    });
+
                     data.forEach(r => {
                         if (this.schedules[r.employee_id]) {
                             this.schedules[r.employee_id][r.date] = r.is_working;
                         }
                     });
+
+                    this.currentWeekData = { ...this.schedules }; // Сохраняем данные недели для последующих переходов
+
                 } catch (error) {
                     console.error('Ошибка загрузки графика:', error);
                 }
@@ -268,6 +287,12 @@
                     });
                 });
 
+                document.getElementById('tab-overtime').addEventListener('click', () => {
+                    document.getElementById('admin-content').innerHTML = `
+                        <h2 class="text-2xl font-bold mb-4">Редактирование овертаймов</h2>
+                    `;
+                });
+
                 document.getElementById('tab-schedule').addEventListener('click', () => {
                     this.renderSchedule();
                 });
@@ -285,22 +310,26 @@
                 const date = select.getAttribute('data-date');
                 const isWorking = select.value === 'true';
 
-                const { data, error } = await this.supabase
+                // Сохранение изменения в базу
+                const { error } = await this.supabase
                     .from('schedule')
-                    .upsert([{ employee_id: employeeId, date, is_working: isWorking }]);
+                    .upsert({ employee_id: employeeId, date, is_working: isWorking });
 
                 if (error) {
-                    console.error('Ошибка сохранения изменения графика:', error);
+                    console.error('Ошибка при сохранении графика:', error);
                 }
             },
 
+            // Сохранение всех изменений
             async saveScheduleChanges() {
-                // Логика сохранения изменений всех изменений графика
-                alert('Изменения сохранены');
+                console.log('Сохранение изменений...');
             }
         };
 
-        App.init();
+        // Инициализация приложения
+        window.addEventListener('DOMContentLoaded', () => {
+            App.init();
+        });
     </script>
 </body>
 </html>
