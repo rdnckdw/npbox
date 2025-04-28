@@ -10,11 +10,13 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto p-4">
+        <!-- Заголовок и кнопка админ-панели -->
         <div class="flex justify-between mb-6">
             <h1 class="text-2xl font-bold text-indigo-700">График сотрудников</h1>
             <button id="admin-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Админ-панель</button>
         </div>
 
+        <!-- Выбор сотрудника и переключение недель -->
         <div class="flex items-center space-x-4 mb-6">
             <select id="employee-select" class="border rounded-lg p-2"></select>
             <button id="prev-week" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-full"><i class="fas fa-chevron-left"></i></button>
@@ -22,17 +24,20 @@
             <button id="next-week" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-full"><i class="fas fa-chevron-right"></i></button>
         </div>
 
+        <!-- Вкладки админ-панели -->
         <div id="admin-tabs" class="hidden mb-4 space-x-4">
             <button id="tab-schedule" class="bg-indigo-500 text-white px-4 py-2 rounded">График</button>
             <button id="tab-employees" class="bg-gray-300 text-gray-700 px-4 py-2 rounded">Сотрудники</button>
+            <button id="tab-overtime" class="bg-gray-300 text-gray-700 px-4 py-2 rounded">Овертаймы</button>
             <button id="logout-btn" class="bg-red-600 text-white px-4 py-2 rounded-lg">Выйти из админки</button>
         </div>
 
+        <!-- Контейнер для графика сотрудников -->
+        <div id="schedule-container" class="bg-white shadow rounded-lg overflow-x-auto"></div>
         <div id="admin-content"></div>
-
-        <div id="schedule-container" class="bg-white shadow rounded-lg overflow-x-auto mt-6"></div>
     </div>
 
+    <!-- Модальное окно для входа -->
     <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
         <div class="bg-white p-6 rounded-lg w-80 space-y-4">
             <h2 class="text-xl font-bold">Вход в админ-панель</h2>
@@ -44,270 +49,223 @@
         </div>
     </div>
 
-    <script>
-        const SUPABASE_CONFIG = {
-            url: 'https://brhrqswautuamwkworrf.supabase.co',
-            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyaHJxc3dhdXR1YW13a3dvcnJmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTgyNTk3NSwiZXhwIjoyMDYxNDAxOTc1fQ.HBxafrvjO2-PnrBQp7Obc5dFFZWO_p5DQySUDZu-IfI'
-        };
+    <!-- Форма для добавления нового сотрудника -->
+    <div id="add-employee-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+        <div class="bg-white p-6 rounded-lg w-80 space-y-4">
+            <h2 class="text-xl font-bold">Добавить сотрудника</h2>
+            <input id="new-employee-name" type="text" placeholder="Имя сотрудника" class="border p-2 w-full rounded-lg">
+            <button id="save-employee-btn" class="w-full bg-blue-600 text-white py-2 rounded-lg">Сохранить</button>
+            <button id="cancel-add-employee-btn" class="w-full bg-gray-300 py-2 rounded-lg">Отмена</button>
+        </div>
+    </div>
 
-        const App = {
-            supabase: null,
-            currentWeekStart: null,
-            employees: [],
-            schedules: {},
-            isAdmin: false,
-            selectedEmployeeId: 'all',
+<script>
+const SUPABASE_CONFIG = {
+    url: 'https://brhrqswautuamwkworrf.supabase.co',
+    key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyaHJxc3dhdXR1YW13a3dvcnJmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTgyNTk3NSwiZXhwIjoyMDYxNDAxOTc1fQ.HBxafrvjO2-PnrBQp7Obc5dFFZWO_p5DQySUDZu-IfI'
+};
 
-            async init() {
-                try {
-                    this.supabase = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
-                    this.currentWeekStart = this.getMonday(new Date());
-                    await this.loadEmployees();
-                    this.setupEmployeeSelector();
-                    await this.loadSchedule(this.currentWeekStart);
-                    this.renderSchedule();
-                    this.setupNavigation();
-                    this.setupAdminLogin();
-                    this.setupAdminTabs();
-                    console.log('Приложение успешно инициализировано');
-                } catch (error) {
-                    console.error('Ошибка инициализации приложения:', error);
-                }
-            },
+const App = {
+    supabase: null,
+    currentWeekStart: null,
+    employees: [],
+    schedules: {},
+    comments: {},
+    isAdmin: false,
+    selectedEmployeeId: 'all',
 
-            getMonday(date) {
-                const d = new Date(date);
-                const day = d.getDay();
-                const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-                return new Date(d.setDate(diff));
-            },
+    async init() {
+        this.supabase = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
+        this.currentWeekStart = this.getMonday(new Date());
+        await this.loadEmployees();
+        await this.loadSchedule(this.currentWeekStart);
+        this.setupEmployeeSelector();
+        this.renderSchedule();
+        this.setupNavigation();
+        this.setupAdminLogin();
+        this.setupAdminTabs();
+    },
 
-            async loadEmployees() {
-                try {
-                    const { data, error } = await this.supabase
-                        .from('employees')
-                        .select('*')
-                        .order('name', { ascending: true });
+    getMonday(date) {
+        const d = new Date(date);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.setDate(diff));
+    },
 
-                    if (error) throw error;
-                    this.employees = data;
-                } catch (error) {
-                    console.error('Ошибка загрузки сотрудников:', error);
-                }
-            },
+    async loadEmployees() {
+        const { data, error } = await this.supabase.from('employees').select('*').order('name', { ascending: true });
+        if (!error) this.employees = data;
+    },
 
-            setupEmployeeSelector() {
-                const employeeSelect = document.getElementById('employee-select');
-                employeeSelect.innerHTML = '<option value="all">Все сотрудники</option>';
+    setupEmployeeSelector() {
+        const employeeSelect = document.getElementById('employee-select');
+        employeeSelect.innerHTML = '<option value="all">Все сотрудники</option>';
+        this.employees.forEach(emp => {
+            const option = document.createElement('option');
+            option.value = emp.id;
+            option.textContent = emp.name;
+            employeeSelect.appendChild(option);
+        });
+        employeeSelect.addEventListener('change', e => {
+            this.selectedEmployeeId = e.target.value;
+            this.renderSchedule();
+        });
+    },
 
-                this.employees.forEach(emp => {
-                    const option = document.createElement('option');
-                    option.value = emp.id;
-                    option.textContent = emp.name;
-                    employeeSelect.appendChild(option);
-                });
+    async loadSchedule(weekStart) {
+        const start = weekStart.toISOString().split('T')[0];
+        const end = new Date(weekStart.getTime() + 13 * 86400000).toISOString().split('T')[0];
+        const { data, error } = await this.supabase
+            .from('schedule')
+            .select('employee_id, date, is_working, comment')
+            .gte('date', start)
+            .lte('date', end);
 
-                employeeSelect.addEventListener('change', (event) => {
-                    this.selectedEmployeeId = event.target.value;
-                    this.renderSchedule();
-                });
-            },
+        if (!error) {
+            this.schedules = {};
+            this.comments = {};
+            this.employees.forEach(e => { this.schedules[e.id] = {}; this.comments[e.id] = {}; });
+            data.forEach(r => {
+                this.schedules[r.employee_id][r.date] = r.is_working;
+                this.comments[r.employee_id][r.date] = r.comment || '';
+            });
+        }
+    },
 
-            async loadSchedule(weekStart) {
-                try {
-                    const start = weekStart.toISOString().split('T')[0];
-                    const end = new Date(weekStart.getTime() + 6 * 86400000).toISOString().split('T')[0];
+    renderSchedule() {
+        const container = document.getElementById('schedule-container');
+        const today = new Date().toISOString().split('T')[0];
+        const weekDates = [...Array(14)].map((_, i) => {
+            const day = new Date(this.currentWeekStart.getTime() + i * 86400000);
+            return { date: day.toISOString().split('T')[0], dayName: day.toLocaleDateString('ru-RU', { weekday: 'short' }) };
+        });
 
-                    const { data, error } = await this.supabase
-                        .from('schedule')
-                        .select('employee_id, date, is_working, comment')
-                        .gte('date', start)
-                        .lte('date', end);
+        const week1 = weekDates.slice(0, 7);
+        const week2 = weekDates.slice(7, 14);
 
-                    if (error) throw error;
+        container.innerHTML = this.generateTable(week1, today) + '<br>' + this.generateTable(week2, today);
+        this.updateWeekDisplay();
+    },
 
-                    this.schedules = {};
-                    this.employees.forEach(e => this.schedules[e.id] = {});
+    generateTable(weekDates, today) {
+        let html = `<table class="min-w-full mb-8"><thead><tr><th class="p-3 text-left">Сотрудник</th>`;
+        weekDates.forEach(day => {
+            const highlight = day.date === today ? 'bg-blue-100' : '';
+            html += `<th class="p-3 text-center ${highlight}">${day.dayName}<br>${day.date.split('-')[2]}</th>`;
+        });
+        html += `</tr></thead><tbody>`;
 
-                    data.forEach(r => {
-                        if (this.schedules[r.employee_id]) {
-                            this.schedules[r.employee_id][r.date] = { 
-                                isWorking: r.is_working, 
-                                comment: r.comment
-                            };
-                        }
-                    });
-                } catch (error) {
-                    console.error('Ошибка загрузки графика:', error);
-                }
-            },
+        const employeesToShow = this.selectedEmployeeId === 'all' ? this.employees : this.employees.filter(e => e.id === this.selectedEmployeeId);
 
-            renderSchedule() {
-                const container = document.getElementById('schedule-container');
-                const weekDates = [...Array(7)].map((_, i) => {
-                    const day = new Date(this.currentWeekStart.getTime() + i * 86400000);
-                    return {
-                        date: day.toISOString().split('T')[0],
-                        dayName: day.toLocaleDateString('ru-RU', { weekday: 'short' })
-                    };
-                });
+        employeesToShow.forEach(emp => {
+            html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
+            weekDates.forEach(day => {
+                const isWorking = this.schedules[emp.id][day.date];
+                const comment = this.comments[emp.id][day.date] || '';
+                const bgColor = isWorking ? 'bg-green-100' : 'bg-red-100';
+                const todayHighlight = day.date === today ? 'bg-blue-100' : '';
 
-                let html = `<table class="min-w-full"><thead><tr><th class="p-3 text-left">Сотрудник</th>`;
-                weekDates.forEach(day => {
-                    html += `<th class="p-3 text-center">${day.dayName}<br>${day.date.split('-')[2]}</th>`;
-                });
-                html += `</tr></thead><tbody>`;
-
-                const employeesToShow = this.selectedEmployeeId === 'all'
-                    ? this.employees
-                    : this.employees.filter(e => e.id === this.selectedEmployeeId);
-
-                employeesToShow.forEach(emp => {
-                    html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
-                    weekDates.forEach(day => {
-                        const statusData = this.schedules[emp.id] && this.schedules[emp.id][day.date];
-                        const status = statusData ? (statusData.isWorking ? 'Работает' : 'Выходной') : 'Работает';
-                        const comment = statusData ? statusData.comment : '';
-                        const bgColor = statusData && statusData.isWorking ? 'bg-green-100' : 'bg-red-100';
-
-                        html += `<td class="p-3 text-center ${bgColor}" onclick="${this.isAdmin ? `toggleStatus('${emp.id}', '${day.date}')` : ''}">
-                                    ${status}
-                                    <br>
-                                    <button class="text-sm text-blue-600 hover:underline" onclick="${this.isAdmin ? `editComment('${emp.id}', '${day.date}')` : ''}">
-                                        Комментарий
-                                    </button>
-                                    <p class="text-xs">${comment || ''}</p>
-                                  </td>`;
-                    });
-                    html += `</tr>`;
-                });
-
-                html += `</tbody></table>`;
-                container.innerHTML = html;
-            },
-
-            toggleStatus(empId, date) {
                 if (this.isAdmin) {
-                    const currentStatus = this.schedules[empId] && this.schedules[empId][date] && this.schedules[empId][date].isWorking;
-                    const newStatus = !currentStatus;
-                    this.supabase
-                        .from('schedule')
-                        .upsert([{ employee_id: empId, date: date, is_working: newStatus }])
-                        .then(() => {
-                            this.loadSchedule(this.currentWeekStart);
-                            this.renderSchedule();
-                        })
-                        .catch(error => console.error('Ошибка при обновлении статуса:', error));
+                    html += `<td class="p-3 text-center ${bgColor} ${todayHighlight}" onclick="App.toggleWorkStatus('${emp.id}', '${day.date}')">
+                                ${isWorking ? 'Работает' : 'Выходной'}<br>
+                                <small>${comment}</small>
+                                <div onclick="event.stopPropagation(); App.editComment('${emp.id}', '${day.date}')" class="text-blue-600 cursor-pointer">➕</div>
+                             </td>`;
+                } else {
+                    html += `<td class="p-3 text-center ${bgColor} ${todayHighlight}">${isWorking ? 'Работает' : 'Выходной'}<br><small>${comment}</small></td>`;
                 }
-            },
+            });
+            html += `</tr>`;
+        });
 
-            editComment(empId, date) {
-                if (this.isAdmin) {
-                    const comment = prompt('Введите комментарий');
-                    if (comment !== null) {
-                        this.supabase
-                            .from('schedule')
-                            .upsert([{ employee_id: empId, date: date, comment: comment }])
-                            .then(() => {
-                                this.loadSchedule(this.currentWeekStart);
-                                this.renderSchedule();
-                            })
-                            .catch(error => console.error('Ошибка при обновлении комментария:', error));
-                    }
-                }
-            },
+        html += `</tbody></table>`;
+        return html;
+    },
 
-            setupNavigation() {
-                const prevButton = document.getElementById('prev-week');
-                const nextButton = document.getElementById('next-week');
-                const weekDisplay = document.getElementById('week-display');
+    updateWeekDisplay() {
+        const start = this.currentWeekStart.toISOString().split('T')[0];
+        const end = new Date(this.currentWeekStart.getTime() + 13 * 86400000).toISOString().split('T')[0];
+        document.getElementById('week-display').textContent = `${start} - ${end}`;
+    },
 
-                prevButton.addEventListener('click', () => {
-                    this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
-                    this.loadSchedule(this.currentWeekStart);
-                    this.renderSchedule();
-                    this.updateWeekDisplay();
-                });
+    prevWeek() {
+        this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 14);
+        this.loadSchedule(this.currentWeekStart).then(() => this.renderSchedule());
+    },
 
-                nextButton.addEventListener('click', () => {
-                    this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
-                    this.loadSchedule(this.currentWeekStart);
-                    this.renderSchedule();
-                    this.updateWeekDisplay();
-                });
+    nextWeek() {
+        this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 14);
+        this.loadSchedule(this.currentWeekStart).then(() => this.renderSchedule());
+    },
 
-                this.updateWeekDisplay();
-            },
+    setupNavigation() {
+        document.getElementById('prev-week').addEventListener('click', () => this.prevWeek());
+        document.getElementById('next-week').addEventListener('click', () => this.nextWeek());
+    },
 
-            updateWeekDisplay() {
-                const startDate = this.currentWeekStart;
-                const endDate = new Date(startDate);
-                endDate.setDate(endDate.getDate() + 6);
-
-                const weekDisplay = document.getElementById('week-display');
-                weekDisplay.textContent = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
-            },
-
-            setupAdminLogin() {
-                const loginBtn = document.getElementById('admin-btn');
-                const loginModal = document.getElementById('login-modal');
-                const loginSubmit = document.getElementById('login-submit');
-                const loginCancel = document.getElementById('login-cancel');
-                const loginError = document.getElementById('login-error');
-
-                loginBtn.addEventListener('click', () => {
-                    loginModal.classList.remove('hidden');
-                });
-
-                loginSubmit.addEventListener('click', () => {
-                    const username = document.getElementById('login-username').value;
-                    const password = document.getElementById('login-password').value;
-
-                    // Просто пример валидации, измените на реальную логику
-                    if (username === 'admin' && password === 'password') {
-                        this.isAdmin = true;
-                        loginModal.classList.add('hidden');
-                        this.showAdminPanel();
-                    } else {
-                        loginError.classList.remove('hidden');
-                    }
-                });
-
-                loginCancel.addEventListener('click', () => {
-                    loginModal.classList.add('hidden');
-                });
-            },
-
-            showAdminPanel() {
-                const adminTabs = document.getElementById('admin-tabs');
-                const adminContent = document.getElementById('admin-content');
-                adminTabs.classList.remove('hidden');
-                adminContent.classList.remove('hidden');
-
-                const logoutBtn = document.getElementById('logout-btn');
-                logoutBtn.addEventListener('click', () => {
-                    this.isAdmin = false;
-                    adminTabs.classList.add('hidden');
-                    adminContent.classList.add('hidden');
-                });
-            },
-
-            setupAdminTabs() {
-                const scheduleTab = document.getElementById('tab-schedule');
-                const employeesTab = document.getElementById('tab-employees');
-                const adminContent = document.getElementById('admin-content');
-
-                scheduleTab.addEventListener('click', () => {
-                    adminContent.innerHTML = 'Здесь вы можете редактировать график сотрудников.';
-                });
-
-                employeesTab.addEventListener('click', () => {
-                    adminContent.innerHTML = 'Здесь вы можете управлять сотрудниками.';
-                });
+    setupAdminLogin() {
+        document.getElementById('admin-btn').addEventListener('click', () => {
+            document.getElementById('login-modal').classList.remove('hidden');
+        });
+        document.getElementById('login-submit').addEventListener('click', () => {
+            const user = document.getElementById('login-username').value;
+            const pass = document.getElementById('login-password').value;
+            if (user === 'admin' && pass === 'admin') {
+                this.isAdmin = true;
+                document.getElementById('login-modal').classList.add('hidden');
+                document.getElementById('admin-tabs').classList.remove('hidden');
+                this.renderSchedule();
+            } else {
+                document.getElementById('login-error').classList.remove('hidden');
             }
-        };
+        });
+        document.getElementById('login-cancel').addEventListener('click', () => {
+            document.getElementById('login-modal').classList.add('hidden');
+        });
+    },
 
-        App.init();
-    </script>
+    setupAdminTabs() {
+        document.getElementById('tab-schedule').addEventListener('click', () => this.renderSchedule());
+        document.getElementById('tab-employees').addEventListener('click', () => this.manageEmployees());
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            this.isAdmin = false;
+            document.getElementById('admin-tabs').classList.add('hidden');
+            this.renderSchedule();
+        });
+    },
+
+    async toggleWorkStatus(empId, date) {
+        const currentStatus = this.schedules[empId][date] || false;
+        const newStatus = !currentStatus;
+        await this.supabase.from('schedule').upsert([{ employee_id: empId, date: date, is_working: newStatus, comment: this.comments[empId][date] }]);
+        this.schedules[empId][date] = newStatus;
+        this.renderSchedule();
+    },
+
+    async editComment(empId, date) {
+        let comment = prompt('Введите комментарий для ячейки (оставьте пустым для удаления):', this.comments[empId][date] || '');
+        if (comment !== null) {
+            await this.supabase.from('schedule').upsert([{ employee_id: empId, date: date, is_working: this.schedules[empId][date], comment: comment }]);
+            this.comments[empId][date] = comment;
+            this.renderSchedule();
+        }
+    },
+
+    async manageEmployees() {
+        const name = prompt('Введите имя нового сотрудника:');
+        if (name) {
+            await this.supabase.from('employees').insert([{ name }]);
+            await this.loadEmployees();
+            this.setupEmployeeSelector();
+            alert('Сотрудник добавлен!');
+        }
+    }
+};
+
+App.init();
+</script>
+
+
 </body>
 </html>
