@@ -212,14 +212,40 @@
                 this.renderSchedule();
             },
 
-            // Сохранение статуса в базу данных
-            async saveSchedule(employeeId, date, isWorking) {
-                const { error } = await this.supabase
-                    .from('schedule')
-                    .upsert([{ employee_id: employeeId, date: date, is_working: isWorking }]);
+         async saveSchedule(employeeId, date, isWorking) {
+    try {
+        // Проверяем, существует ли уже запись для этого сотрудника и этой даты
+        const { data, error } = await this.supabase
+            .from('schedule')
+            .select('employee_id, date')
+            .eq('employee_id', employeeId)
+            .eq('date', date);
 
-                if (error) console.error('Ошибка сохранения статуса работы:', error);
-            },
+        if (error) throw error;
+
+        // Если запись существует, обновляем статус
+        if (data.length > 0) {
+            const { updateError } = await this.supabase
+                .from('schedule')
+                .update({ is_working: isWorking })
+                .eq('employee_id', employeeId)
+                .eq('date', date);
+
+            if (updateError) throw updateError;
+            console.log(`Статус для сотрудника ${employeeId} на ${date} обновлен.`);
+        } else {
+            // Если записи нет, создаем новую
+            const { insertError } = await this.supabase
+                .from('schedule')
+                .insert([{ employee_id: employeeId, date: date, is_working: isWorking }]);
+
+            if (insertError) throw insertError;
+            console.log(`Статус для сотрудника ${employeeId} на ${date} добавлен.`);
+        }
+    } catch (error) {
+        console.error('Ошибка сохранения статуса работы:', error);
+    }
+}
 
             // Обновление отображения недели
             updateWeekDisplay() {
