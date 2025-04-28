@@ -45,10 +45,14 @@
   </div>
 
 <script>
+// 1. Сначала объявляем URL и ключ
 const supabaseUrl = 'https://brhrqswautuamwkworrf.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyaHJxc3dhdXR1YW13a3dvcnJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU4MjU5NzUsImV4cCI6MjA2MTQwMTk3NX0.AsHiUVQhMMQPmUL4JpZOSrJ_qkM2jobVbLI4xIOsjwo';
+
+// 2. Затем создаём клиент Supabase
 const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
+// 3. Теперь можно объявлять остальные переменные
 let currentWeekStart = getMonday(new Date());
 let employees = [];
 let schedules = {};
