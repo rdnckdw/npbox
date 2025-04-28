@@ -9,44 +9,273 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body class="bg-gray-100 min-h-screen">
-
   <div class="container mx-auto p-4">
-    <!-- Заголовок и кнопка админки -->
-    <div class="flex justify-between items-center mb-4">
-      <h1 class="text-2xl font-bold text-indigo-700">График работы сотрудников</h1>
+    <div class="flex justify-between mb-6">
+      <h1 class="text-2xl font-bold text-indigo-700">График сотрудников</h1>
       <button id="admin-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Админ-панель</button>
     </div>
 
-    <!-- Выбор сотрудника -->
-    <div class="mb-4 flex items-center space-x-2">
-      <label for="employee-select" class="font-semibold">Сотрудник:</label>
+    <div class="flex items-center space-x-4 mb-6">
       <select id="employee-select" class="border rounded-lg p-2"></select>
-    </div>
-
-    <!-- Недели переключение -->
-    <div class="flex items-center space-x-4 mb-4">
       <button id="prev-week" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-full"><i class="fas fa-chevron-left"></i></button>
       <div id="week-display" class="font-semibold"></div>
       <button id="next-week" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded-full"><i class="fas fa-chevron-right"></i></button>
     </div>
 
-    <!-- Таблица графика -->
-    <div id="schedule-container" class="bg-white shadow rounded-lg overflow-x-auto"></div>
+    <div id="admin-tabs" class="hidden mb-4 space-x-4">
+      <button id="tab-schedule" class="bg-indigo-500 text-white px-4 py-2 rounded">График</button>
+      <button id="tab-employees" class="bg-gray-300 text-gray-700 px-4 py-2 rounded">Сотрудники</button>
+      <button id="tab-overtime" class="bg-gray-300 text-gray-700 px-4 py-2 rounded">Овертаймы</button>
+    </div>
 
-    <!-- Модальное окно логина -->
-    <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-      <div class="bg-white p-6 rounded-lg w-80 space-y-4">
-        <h2 class="text-xl font-bold">Вход в админ-панель</h2>
-        <input id="login-username" type="text" placeholder="Логин" class="border p-2 w-full rounded-lg">
-        <input id="login-password" type="password" placeholder="Пароль" class="border p-2 w-full rounded-lg">
-        <button id="login-submit" class="w-full bg-green-600 text-white py-2 rounded-lg">Войти</button>
-        <button id="login-cancel" class="w-full bg-gray-300 py-2 rounded-lg">Отмена</button>
-        <p id="login-error" class="text-red-500 text-center hidden">Неверный логин или пароль!</p>
-      </div>
+    <div id="schedule-container" class="bg-white shadow rounded-lg overflow-x-auto"></div>
+    <div id="admin-content"></div>
+  </div>
+
+  <!-- Модальное окно входа -->
+  <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+    <div class="bg-white p-6 rounded-lg w-80 space-y-4">
+      <h2 class="text-xl font-bold">Вход в админ-панель</h2>
+      <input id="login-username" type="text" placeholder="Логин" class="border p-2 w-full rounded-lg">
+      <input id="login-password" type="password" placeholder="Пароль" class="border p-2 w-full rounded-lg">
+      <button id="login-submit" class="w-full bg-green-600 text-white py-2 rounded-lg">Войти</button>
+      <button id="login-cancel" class="w-full bg-gray-300 py-2 rounded-lg">Отмена</button>
+      <p id="login-error" class="text-red-500 text-center hidden">Неверный логин или пароль!</p>
     </div>
   </div>
 
-  <script src="script.js"></script>
+<script>
+const supabaseUrl = 'ТВОЙ_SUPABASE_URL';
+const supabaseKey = 'ТВОЙ_SUPABASE_АНОН_КЛЮЧ';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-</body>
+let currentWeekStart = getMonday(new Date());
+let employees = [];
+let schedules = {};
+let isAdmin = false;
+let selectedEmployeeId = 'all';
+
+async function initializeApp() {
+  await loadEmployees();
+  setupEmployeeSelector();
+  await loadSchedule(currentWeekStart);
+  renderSchedule();
+  setupNavigation();
+  setupAdminLogin();
+}
+
+document.addEventListener('DOMContentLoaded', initializeApp);
+
+function getMonday(date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(d.setDate(diff));
+}
+
+async function loadEmployees() {
+  const { data, error } = await supabase.from('employees').select('*').order('name', { ascending: true });
+  if (!error) employees = data;
+}
+
+async function loadSchedule(weekStart) {
+  const start = weekStart.toISOString().split('T')[0];
+  const end = new Date(weekStart.getTime() + 6 * 86400000).toISOString().split('T')[0];
+  const { data, error } = await supabase
+    .from('schedule')
+    .select('employee_id, date, is_working')
+    .gte('date', start)
+    .lte('date', end);
+  if (!error) {
+    schedules = {};
+    employees.forEach(e => schedules[e.id] = {});
+    data.forEach(r => {
+      if (schedules[r.employee_id]) schedules[r.employee_id][r.date] = r.is_working;
+    });
+  }
+}
+
+function setupEmployeeSelector() {
+  const select = document.getElementById('employee-select');
+  select.innerHTML = '<option value="all">Все сотрудники</option>';
+  employees.forEach(emp => {
+    const option = document.createElement('option');
+    option.value = emp.id;
+    option.textContent = emp.name;
+    select.appendChild(option);
+  });
+
+  select.addEventListener('change', async (e) => {
+    selectedEmployeeId = e.target.value;
+    await loadSchedule(currentWeekStart);
+    renderSchedule();
+  });
+}
+
+function setupNavigation() {
+  document.getElementById('prev-week').addEventListener('click', async () => {
+    currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+    await loadSchedule(currentWeekStart);
+    renderSchedule();
+  });
+  document.getElementById('next-week').addEventListener('click', async () => {
+    currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+    await loadSchedule(currentWeekStart);
+    renderSchedule();
+  });
+  updateWeekDisplay();
+}
+
+function updateWeekDisplay() {
+  const weekStart = currentWeekStart.toLocaleDateString('ru-RU');
+  const weekEnd = new Date(currentWeekStart.getTime() + 6 * 86400000).toLocaleDateString('ru-RU');
+  document.getElementById('week-display').textContent = `${weekStart} - ${weekEnd}`;
+}
+
+<script>
+function setupAdminLogin() {
+  document.getElementById('admin-btn').addEventListener('click', () => {
+    document.getElementById('login-modal').classList.remove('hidden');
+  });
+  document.getElementById('login-cancel').addEventListener('click', () => {
+    document.getElementById('login-modal').classList.add('hidden');
+  });
+  document.getElementById('login-submit').addEventListener('click', () => {
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    if (username === 'admin' && password === '1234') {
+      isAdmin = true;
+      document.getElementById('login-modal').classList.add('hidden');
+      document.getElementById('admin-tabs').classList.remove('hidden');
+      renderSchedule();
+      setupAdminTabs();
+    } else {
+      document.getElementById('login-error').classList.remove('hidden');
+    }
+  });
+}
+
+function setupAdminTabs() {
+  document.getElementById('tab-schedule').addEventListener('click', () => {
+    renderSchedule();
+    document.getElementById('admin-content').innerHTML = '';
+  });
+  document.getElementById('tab-employees').addEventListener('click', () => {
+    renderEmployeesAdmin();
+  });
+  document.getElementById('tab-overtime').addEventListener('click', () => {
+    renderOvertimeAdmin();
+  });
+}
+
+// Рендер сотрудников (добавить, изменить, удалить)
+function renderEmployeesAdmin() {
+  const container = document.getElementById('admin-content');
+  let html = `
+    <h2 class="text-2xl font-bold mb-4">Управление сотрудниками</h2>
+    <table class="min-w-full bg-white shadow rounded-lg mb-4">
+      <thead><tr><th>ID</th><th>Имя</th><th>Действия</th></tr></thead>
+      <tbody>
+  `;
+  employees.forEach(emp => {
+    html += `
+      <tr class="border-t">
+        <td class="px-4 py-2">${emp.id}</td>
+        <td class="px-4 py-2">
+          <input value="${emp.name}" data-employee-id="${emp.id}" class="border p-1 rounded w-full">
+        </td>
+        <td class="px-4 py-2 space-x-2">
+          <button onclick="updateEmployeeName('${emp.id}')" class="text-indigo-600">Сохранить</button>
+          <button onclick="deleteEmployee('${emp.id}')" class="text-red-600">Удалить</button>
+        </td>
+      </tr>`;
+  });
+  html += `</tbody></table>
+    <div class="mt-4">
+      <input id="new-employee-name" class="border p-2 rounded mr-2" placeholder="Новый сотрудник">
+      <button onclick="addEmployee()" class="bg-green-600 text-white px-4 py-2 rounded">Добавить</button>
+    </div>`;
+  container.innerHTML = html;
+}
+
+async function updateEmployeeName(id) {
+  const input = document.querySelector(`input[data-employee-id="${id}"]`);
+  const newName = input.value.trim();
+  if (!newName) return alert('Имя не может быть пустым');
+  await supabase.from('employees').update({ name: newName }).eq('id', id);
+  alert('Имя обновлено!');
+  await loadEmployees();
+  renderEmployeesAdmin();
+}
+
+async function deleteEmployee(id) {
+  if (!confirm('Удалить сотрудника?')) return;
+  await supabase.from('employees').delete().eq('id', id);
+  alert('Удалено!');
+  await loadEmployees();
+  renderEmployeesAdmin();
+}
+
+async function addEmployee() {
+  const name = document.getElementById('new-employee-name').value.trim();
+  if (!name) return alert('Введите имя');
+  await supabase.from('employees').insert({ name });
+  alert('Сотрудник добавлен!');
+  document.getElementById('new-employee-name').value = '';
+  await loadEmployees();
+  renderEmployeesAdmin();
+}
+
+// Овертаймы
+async function renderOvertimeAdmin() {
+  const container = document.getElementById('admin-content');
+  let html = `
+    <h2 class="text-2xl font-bold mb-4">Учёт овертаймов</h2>
+    <table class="min-w-full bg-white shadow rounded-lg mb-4">
+      <thead><tr><th>Сотрудник</th><th>Пн</th><th>Вт</th><th>Ср</th><th>Чт</th><th>Пт</th><th>Сб</th><th>Вс</th></tr></thead>
+      <tbody>
+  `;
+
+  const weekDates = [...Array(7)].map((_, i) => {
+    const day = new Date(currentWeekStart.getTime() + i * 86400000);
+    return day.toISOString().split('T')[0];
+  });
+
+  for (let emp of employees) {
+    html += `<tr><td class="px-4 py-2 font-medium">${emp.name}</td>`;
+    for (let date of weekDates) {
+      html += `<td class="px-2 py-2 text-center">
+        <input type="number" min="0" step="0.5" class="w-16 p-1 border rounded text-center" data-employee="${emp.id}" data-date="${date}">
+      </td>`;
+    }
+    html += `</tr>`;
+  }
+
+  html += `</tbody></table>
+    <div class="text-center mt-4">
+      <button onclick="saveOvertimes()" class="bg-green-600 text-white px-6 py-2 rounded">Сохранить овертаймы</button>
+    </div>`;
+
+  container.innerHTML = html;
+}
+
+async function saveOvertimes() {
+  const inputs = document.querySelectorAll('input[data-employee]');
+  const updates = [];
+
+  inputs.forEach(inp => {
+    updates.push({
+      employee_id: inp.dataset.employee,
+      date: inp.dataset.date,
+      hours: parseFloat(inp.value) || 0
+    });
+  });
+
+  for (const record of updates) {
+    await supabase.from('overtime').upsert(record, { onConflict: ['employee_id', 'date'] });
+  }
+
+  alert('Овертаймы успешно сохранены!');
+}
+</script>
 </html>
