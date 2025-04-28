@@ -166,18 +166,16 @@
                     html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
                     weekDates.forEach(day => {
                         const statusData = this.schedules[emp.id] && this.schedules[emp.id][day.date];
-                        const status = statusData ? (statusData.isWorking ? 'Работает' : 'Выходной') : 'Работает';
+                        const isWorking = statusData ? statusData.isWorking : true; // по умолчанию работает
                         const comment = statusData ? statusData.comment : '';
-                        const bgColor = statusData && statusData.isWorking ? 'bg-green-100' : 'bg-red-100';
+                        const bgColor = isWorking ? 'bg-green-100' : 'bg-red-100';
+                        const status = isWorking ? 'Работает' : 'Выходной';
 
-                        html += `<td class="p-3 text-center ${bgColor}" onclick="${this.isAdmin ? `toggleStatus('${emp.id}', '${day.date}')` : ''}">
-                                    ${status}
-                                    <br>
-                                    <button class="text-sm text-blue-600 hover:underline" onclick="${this.isAdmin ? `editComment('${emp.id}', '${day.date}')` : ''}">
-                                        Комментарий
-                                    </button>
-                                    <p class="text-xs">${comment}</p>
-                                  </td>`;
+                        html += `<td class="p-3 text-center ${bgColor}" ${this.isAdmin ? `onclick="App.toggleStatus('${emp.id}', '${day.date}')"` : ''}>
+                                    <div>${status}</div>
+                                    ${this.isAdmin ? `<button class="text-xs text-blue-600 hover:underline mt-1" onclick="event.stopPropagation(); App.editComment('${emp.id}', '${day.date}')">✎</button>` : ''}
+                                    ${comment ? `<p class="text-xs mt-1">${comment}</p>` : ''}
+                                </td>`;
                     });
                     html += `</tr>`;
                 });
@@ -267,57 +265,16 @@
                     const adminTabs = document.getElementById('admin-tabs');
                     adminTabs.classList.remove('hidden');
                     const tabSchedule = document.getElementById('tab-schedule');
-                    const tabEmployees = document.getElementById('tab-employees');
-                    const adminContent = document.getElementById('admin-content');
-
-                    tabSchedule.addEventListener('click', () => {
-                        adminContent.innerHTML = '';
-                    });
-
-                    tabEmployees.addEventListener('click', () => {
-                        adminContent.innerHTML = `
-                            <h2 class="text-xl mb-4">Добавить/редактировать сотрудников</h2>
-                            <form id="employee-form">
-                                <input type="text" id="employee-name" placeholder="Имя сотрудника" class="border p-2 mb-4 w-full rounded">
-                                <button type="submit" class="bg-indigo-600 text-white py-2 rounded w-full">Добавить сотрудника</button>
-                            </form>
-                            <ul id="employee-list" class="mt-4"></ul>
-                        `;
-                        this.renderEmployeeList();
-                    });
-
-                    const logoutButton = document.getElementById('logout-btn');
-                    logoutButton.addEventListener('click', () => {
-                        this.isAdmin = false;
-                        adminTabs.classList.add('hidden');
-                        this.loadSchedule(this.currentWeekStart);
-                        this.renderSchedule();
-                    });
+                    tabSchedule.classList.add('bg-indigo-500', 'text-white');
                 }
             },
 
-            async renderEmployeeList() {
-                const employeeList = document.getElementById('employee-list');
-                employeeList.innerHTML = '';
-
-                this.employees.forEach(emp => {
-                    const li = document.createElement('li');
-                    li.className = 'flex justify-between items-center mb-2';
-                    li.innerHTML = `
-                        <span>${emp.name}</span>
-                        <button class="text-red-600 hover:underline" onclick="App.deleteEmployee(${emp.id})">Удалить</button>
-                    `;
-                    employeeList.appendChild(li);
-                });
-            },
-
-            async deleteEmployee(empId) {
-                const confirmDelete = confirm('Вы уверены, что хотите удалить этого сотрудника?');
-                if (confirmDelete) {
-                    await this.supabase.from('employees').delete().match({ id: empId });
-                    this.loadEmployees();
-                    this.renderEmployeeList();
-                }
+            logout() {
+                this.isAdmin = false;
+                document.getElementById('admin-tabs').classList.add('hidden');
+                this.setupEmployeeSelector();
+                this.loadSchedule(this.currentWeekStart);
+                this.renderSchedule();
             }
         };
 
