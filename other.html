@@ -49,16 +49,6 @@
         </div>
     </div>
 
-    <!-- Форма для добавления нового сотрудника -->
-    <div id="add-employee-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-        <div class="bg-white p-6 rounded-lg w-80 space-y-4">
-            <h2 class="text-xl font-bold">Добавить сотрудника</h2>
-            <input id="new-employee-name" type="text" placeholder="Имя сотрудника" class="border p-2 w-full rounded-lg">
-            <button id="save-employee-btn" class="w-full bg-blue-600 text-white py-2 rounded-lg">Сохранить</button>
-            <button id="cancel-add-employee-btn" class="w-full bg-gray-300 py-2 rounded-lg">Отмена</button>
-        </div>
-    </div>
-
     <script>
         // Конфигурация Supabase
         const SUPABASE_CONFIG = {
@@ -142,7 +132,7 @@
 
                     const { data, error } = await this.supabase
                         .from('schedule')
-                        .select('employee_id, date, is_working')
+                        .select('employee_id, date, is_working, comment')
                         .gte('date', start)
                         .lte('date', end);
 
@@ -153,7 +143,7 @@
 
                     data.forEach(r => {
                         if (this.schedules[r.employee_id]) {
-                            this.schedules[r.employee_id][r.date] = r.is_working;
+                            this.schedules[r.employee_id][r.date] = { isWorking: r.is_working, comment: r.comment };
                         }
                     });
                 } catch (error) {
@@ -185,14 +175,21 @@
                 employeesToShow.forEach(emp => {
                     html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
                     weekDates.forEach(day => {
-                        const isWorking = this.schedules[emp.id] && this.schedules[emp.id][day.date];
-                        const status = isWorking ? 'Работает' : 'Отдыхает';
-                        const bgColor = isWorking ? 'bg-green-100' : 'bg-red-100';
+                        // Если нет статуса, по умолчанию "Работает"
+                        const status = this.schedules[emp.id] && this.schedules[emp.id][day.date]
+                            ? this.schedules[emp.id][day.date].isWorking ? 'Работает' : 'Отдыхает'
+                            : 'Работает'; // Статус по умолчанию
+                        const comment = this.schedules[emp.id] && this.schedules[emp.id][day.date]
+                            ? this.schedules[emp.id][day.date].comment || '' 
+                            : '';
 
                         if (this.isAdmin) {
-                            html += `<td class="p-3 text-center ${bgColor}" onclick="App.toggleWorkStatus('${emp.id}', '${day.date}')">${status}</td>`;
+                            html += `<td class="p-3 text-center ${status === 'Работает' ? 'bg-green-100' : 'bg-red-100'}"
+                                        ondblclick="App.addComment('${emp.id}', '${day.date}')">
+                                        ${status} ${comment ? `- ${comment}` : ''}</td>`;
                         } else {
-                            html += `<td class="p-3 text-center ${bgColor}">${status}</td>`;
+                            html += `<td class="p-3 text-center ${status === 'Работает' ? 'bg-green-100' : 'bg-red-100'}">
+                                        ${status} ${comment ? `- ${comment}` : ''}</td>`;
                         }
                     });
                     html += `</tr>`;
@@ -233,7 +230,6 @@
                             .eq('date', date);
 
                         if (updateError) throw updateError;
-                        console.log(`Статус для сотрудника ${employeeId} на ${date} обновлен.`);
                     } else {
                         // Если записи нет, создаем новую
                         const { insertError } = await this.supabase
@@ -241,70 +237,127 @@
                             .insert([{ employee_id: employeeId, date: date, is_working: isWorking }]);
 
                         if (insertError) throw insertError;
-                        console.log(`Статус для сотрудника ${employeeId} на ${date} добавлен.`);
                     }
                 } catch (error) {
-                    console.error('Ошибка сохранения статуса работы:', error);
+                    console.error('Ошибка сохранения статуса:', error);
+                }
+            },
+
+            // Обработчик долгого клика для добавления комментария
+            addComment(employeeId, date) {
+                const comment = prompt('Введите комментарий:', '');
+                if (comment !== null && comment.trim() !== '') {
+                    this.saveComment(employeeId, date, comment);
+                }
+            },
+
+            // Сохранение комментария
+            async saveComment(employeeId, date, comment) {
+                try {
+                    const { data, error } = await this.supabase
+                        .from('schedule')
+                        .select('employee_id, date')
+                        .eq('employee_id', employeeId)
+                        .eq('date', date);
+
+                    if (error) throw error;
+
+                    // Если запись существует, обновляем комментарий
+                    if (data.length > 0) {
+                        const { updateError } = await this.supabase
+                            .from('schedule')
+                            .update({ comment: comment })
+                            .eq('employee_id', employeeId)
+                            .eq('date', date);
+
+                        if (updateError) throw updateError;
+                    } else {
+                        // Если записи нет, создаем новую
+                        const { insertError } = await this.supabase
+                            .from('schedule')
+                            .insert([{ employee_id: employeeId, date: date, comment: comment }]);
+
+                        if (insertError) throw insertError;
+                    }
+                    this.loadSchedule(this.currentWeekStart); // Перезагружаем график с новым комментарием
+                } catch (error) {
+                    console.error('Ошибка сохранения комментария:', error);
                 }
             },
 
             // Обновление отображения недели
             updateWeekDisplay() {
                 const weekDisplay = document.getElementById('week-display');
-                const startDate = this.currentWeekStart.toISOString().split('T')[0];
-                const endDate = new Date(this.currentWeekStart.getTime() + 6 * 86400000)
-                    .toISOString().split('T')[0];
-                weekDisplay.textContent = `${startDate} - ${endDate}`;
-            },
-
-            // Переключение на предыдущую неделю
-            prevWeek() {
-                this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
-                this.loadSchedule(this.currentWeekStart).then(() => this.renderSchedule());
-            },
-
-            // Переключение на следующую неделю
-            nextWeek() {
-                this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
-                this.loadSchedule(this.currentWeekStart).then(() => this.renderSchedule());
+                const startDate = new Date(this.currentWeekStart);
+                const endDate = new Date(this.currentWeekStart);
+                endDate.setDate(startDate.getDate() + 6);
+                weekDisplay.textContent = `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`;
             },
 
             // Настройка навигации по неделям
             setupNavigation() {
-                document.getElementById('prev-week').addEventListener('click', () => this.prevWeek());
-                document.getElementById('next-week').addEventListener('click', () => this.nextWeek());
+                const prevWeekBtn = document.getElementById('prev-week');
+                const nextWeekBtn = document.getElementById('next-week');
+
+                prevWeekBtn.addEventListener('click', () => {
+                    this.currentWeekStart.setDate(this.currentWeekStart.getDate() - 7);
+                    this.loadSchedule(this.currentWeekStart);
+                    this.renderSchedule();
+                });
+
+                nextWeekBtn.addEventListener('click', () => {
+                    this.currentWeekStart.setDate(this.currentWeekStart.getDate() + 7);
+                    this.loadSchedule(this.currentWeekStart);
+                    this.renderSchedule();
+                });
             },
 
-            // Вход в админ-панель
+            // Обработчик входа в админку
             setupAdminLogin() {
                 const adminBtn = document.getElementById('admin-btn');
+                const loginModal = document.getElementById('login-modal');
+                const loginSubmit = document.getElementById('login-submit');
+                const loginCancel = document.getElementById('login-cancel');
+                const loginError = document.getElementById('login-error');
+
                 adminBtn.addEventListener('click', () => {
-                    document.getElementById('login-modal').classList.remove('hidden');
+                    loginModal.classList.remove('hidden');
                 });
 
-                document.getElementById('login-submit').addEventListener('click', async () => {
+                loginCancel.addEventListener('click', () => {
+                    loginModal.classList.add('hidden');
+                });
+
+                loginSubmit.addEventListener('click', () => {
                     const username = document.getElementById('login-username').value;
                     const password = document.getElementById('login-password').value;
-                    
-                    if (username === 'admin' && password === 'admin') {
+
+                    // В реальном приложении добавьте проверку пароля и логина
+                    if (username === 'admin' && password === 'password') {
                         this.isAdmin = true;
-                        document.getElementById('login-modal').classList.add('hidden');
-                        document.getElementById('admin-tabs').classList.remove('hidden');
-                        this.renderSchedule();
+                        loginModal.classList.add('hidden');
+                        this.toggleAdminTabs();
                     } else {
-                        document.getElementById('login-error').classList.remove('hidden');
+                        loginError.classList.remove('hidden');
                     }
                 });
+            },
 
-                document.getElementById('login-cancel').addEventListener('click', () => {
-                    document.getElementById('login-modal').classList.add('hidden');
-                });
+            // Показ/скрытие вкладок админ-панели
+            toggleAdminTabs() {
+                const adminTabs = document.getElementById('admin-tabs');
+                adminTabs.classList.remove('hidden');
             },
 
             // Настройка вкладок админ-панели
             setupAdminTabs() {
-                document.getElementById('tab-schedule').addEventListener('click', () => this.renderSchedule());
-            },
+                const logoutBtn = document.getElementById('logout-btn');
+                logoutBtn.addEventListener('click', () => {
+                    this.isAdmin = false;
+                    document.getElementById('admin-tabs').classList.add('hidden');
+                    this.renderSchedule();
+                });
+            }
         };
 
         // Инициализация приложения
