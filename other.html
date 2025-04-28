@@ -64,8 +64,6 @@ async function initializeApp() {
   setupAdminLogin();
 }
 
-document.addEventListener('DOMContentLoaded', initializeApp);
-
 function getMonday(date) {
   const d = new Date(date);
   const day = d.getDay();
@@ -77,12 +75,6 @@ async function loadEmployees() {
   const { data, error } = await supabase.from('employees').select('*').order('name', { ascending: true });
   if (!error) employees = data;
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('admin-btn').addEventListener('click', () => {
-    document.getElementById('login-modal').classList.remove('hidden');
-  });
-});
 
 async function loadSchedule(weekStart) {
   const start = weekStart.toISOString().split('T')[0];
@@ -173,7 +165,6 @@ function setupAdminTabs() {
   });
 }
 
-// Рендер сотрудников (добавить, изменить, удалить)
 function renderEmployeesAdmin() {
   const container = document.getElementById('admin-content');
   let html = `
@@ -203,11 +194,6 @@ function renderEmployeesAdmin() {
   container.innerHTML = html;
 }
 
-document.getElementById('admin-btn').addEventListener('click', () => {
-    document.getElementById('login-modal').classList.remove('hidden');
-});
-
-
 async function updateEmployeeName(id) {
   const input = document.querySelector(`input[data-employee-id="${id}"]`);
   const newName = input.value.trim();
@@ -236,7 +222,6 @@ async function addEmployee() {
   renderEmployeesAdmin();
 }
 
-// Овертаймы
 async function renderOvertimeAdmin() {
   const container = document.getElementById('admin-content');
   let html = `
@@ -288,8 +273,9 @@ async function saveOvertimes() {
   alert('Овертаймы успешно сохранены!');
 }
 
+// === Запуск приложения ===
 document.addEventListener('DOMContentLoaded', initializeApp);
-
 </script>
+
 </body>
 </html>
