@@ -12,8 +12,8 @@
     <div class="container mx-auto p-4">
         <!-- Заголовок и кнопка админ-панели -->
         <div class="flex justify-between mb-6">
-            <h1 class="text-2xl font-bold text-indigo-700">График сотрудников</h1>
-            <button id="admin-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Админ-панель</button>
+            <h1 class="text-2xl font-bold text-indigo-700">График</h1>
+            <button id="admin-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Админка</button>
         </div>
 
         <!-- Выбор сотрудника и переключение недель -->
@@ -124,122 +124,46 @@
                 });
             },
 
-// Загрузка графика с комментариями
-async loadSchedule(weekStart) {
-    try {
-        const start = weekStart.toISOString().split('T')[0];
-        const end = new Date(weekStart.getTime() + 6 * 86400000).toISOString().split('T')[0];
+            // Загрузка графика с комментариями
+            async loadSchedule(weekStart) {
+                try {
+                    const start = weekStart.toISOString().split('T')[0];
+                    const end = new Date(weekStart.getTime() + 6 * 86400000).toISOString().split('T')[0];
 
-        const { data, error } = await this.supabase
-            .from('schedule')
-            .select('employee_id, date, is_working, comment')  // Добавлен столбец comment
-            .gte('date', start)
-            .lte('date', end);
+                    const { data, error } = await this.supabase
+                        .from('schedule')
+                        .select('employee_id, date, is_working, comment')  // Добавлен столбец comment
+                        .gte('date', start)
+                        .lte('date', end);
 
-        if (error) throw error;
+                    if (error) throw error;
 
-        this.schedules = {};
-        this.employees.forEach(e => this.schedules[e.id] = {});
+                    this.schedules = {};
+                    this.employees.forEach(e => this.schedules[e.id] = {});
 
-        data.forEach(r => {
-            if (this.schedules[r.employee_id]) {
-                this.schedules[r.employee_id][r.date] = { 
-                    isWorking: r.is_working, 
-                    comment: r.comment  // Добавлен комментарий
-                };
-            }
-        });
-    } catch (error) {
-        console.error('Ошибка загрузки графика:', error);
-    }
-}
+                    data.forEach(r => {
+                        if (this.schedules[r.employee_id]) {
+                            this.schedules[r.employee_id][r.date] = { 
+                                isWorking: r.is_working, 
+                                comment: r.comment  // Добавлен комментарий
+                            };
+                        }
+                    });
+                } catch (error) {
+                    console.error('Ошибка загрузки графика:', error);
+                }
+            },
 
-
-          // Отображение графика
-renderSchedule() {
-    const container = document.getElementById('schedule-container');
-    const weekDates = [...Array(7)].map((_, i) => {
-        const day = new Date(this.currentWeekStart.getTime() + i * 86400000);
-        return {
-            date: day.toISOString().split('T')[0],
-            dayName: day.toLocaleDateString('ru-RU', { weekday: 'short' })
-        };
-    });
-
-    let html = `<table class="min-w-full"><thead><tr><th class="p-3 text-left">Сотрудник</th>`;
-    weekDates.forEach(day => {
-        html += `<th class="p-3 text-center">${day.dayName}<br>${day.date.split('-')[2]}</th>`;
-    });
-    html += `</tr></thead><tbody>`;
-
-    const employeesToShow = this.selectedEmployeeId === 'all'
-        ? this.employees
-        : this.employees.filter(e => e.id === this.selectedEmployeeId);
-
-    employeesToShow.forEach(emp => {
-        html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
-        weekDates.forEach(day => {
-            const statusData = this.schedules[emp.id] && this.schedules[emp.id][day.date];
-            const status = statusData ? (statusData.isWorking ? 'Работает' : 'Отдыхает') : 'Работает'; // По умолчанию "Работает"
-            const comment = statusData ? statusData.comment : ''; // Получаем комментарий, если есть
-            const bgColor = statusData && statusData.isWorking ? 'bg-green-100' : 'bg-red-100';
-
-            html += `<td class="p-3 text-center ${bgColor}" onclick="App.addComment('${emp.id}', '${day.date}')">
-                        ${status} ${comment ? `(<span class="text-sm text-gray-500">${comment}</span>)` : ''}
-                      </td>`;
-        });
-        html += `</tr>`;
-    });
-
-    container.innerHTML = html;
-    this.updateWeekDisplay();
-}
-
-// Функция для добавления или редактирования комментария
-async addComment(employeeId, date) {
-    const comment = prompt('Введите комментарий:');
-    if (comment !== null) {
-        await this.saveComment(employeeId, date, comment);
-        this.renderSchedule(); // Перерисовываем график после добавления комментария
-    }
-}
-
-// Сохранение комментария в базе данных
-async saveComment(employeeId, date, comment) {
-    try {
-        // Проверяем, существует ли уже запись для этого сотрудника и этой даты
-        const { data, error } = await this.supabase
-            .from('schedule')
-            .select('employee_id, date')
-            .eq('employee_id', employeeId)
-            .eq('date', date);
-
-        if (error) throw error;
-
-        // Если запись существует, обновляем комментарий
-        if (data.length > 0) {
-            const { updateError } = await this.supabase
-                .from('schedule')
-                .update({ comment })
-                .eq('employee_id', employeeId)
-                .eq('date', date);
-
-            if (updateError) throw updateError;
-            console.log(`Комментарий для сотрудника ${employeeId} на ${date} обновлен.`);
-        } else {
-            // Если записи нет, создаем новую запись с комментарием
-            const { insertError } = await this.supabase
-                .from('schedule')
-                .insert([{ employee_id: employeeId, date: date, comment }]);
-
-            if (insertError) throw insertError;
-            console.log(`Комментарий для сотрудника ${employeeId} на ${date} добавлен.`);
-        }
-    } catch (error) {
-        console.error('Ошибка сохранения комментария:', error);
-    }
-}
-
+            // Отображение графика
+            renderSchedule() {
+                const container = document.getElementById('schedule-container');
+                const weekDates = [...Array(7)].map((_, i) => {
+                    const day = new Date(this.currentWeekStart.getTime() + i * 86400000);
+                    return {
+                        date: day.toISOString().split('T')[0],
+                        dayName: day.toLocaleDateString('ru-RU', { weekday: 'short' })
+                    };
+                });
 
                 let html = `<table class="min-w-full"><thead><tr><th class="p-3 text-left">Сотрудник</th>`;
                 weekDates.forEach(day => {
@@ -254,22 +178,14 @@ async saveComment(employeeId, date, comment) {
                 employeesToShow.forEach(emp => {
                     html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
                     weekDates.forEach(day => {
-                        // Если нет статуса, по умолчанию "Работает"
-                        const status = this.schedules[emp.id] && this.schedules[emp.id][day.date]
-                            ? this.schedules[emp.id][day.date].isWorking ? 'Работает' : 'Отдыхает'
-                            : 'Работает'; // Статус по умолчанию
-                        const comment = this.schedules[emp.id] && this.schedules[emp.id][day.date]
-                            ? this.schedules[emp.id][day.date].comment || '' 
-                            : '';
+                        const statusData = this.schedules[emp.id] && this.schedules[emp.id][day.date];
+                        const status = statusData ? (statusData.isWorking ? 'Работает' : 'Отдыхает') : 'Работает'; // По умолчанию "Работает"
+                        const comment = statusData ? statusData.comment : ''; // Получаем комментарий, если есть
+                        const bgColor = statusData && statusData.isWorking ? 'bg-green-100' : 'bg-red-100';
 
-                        if (this.isAdmin) {
-                            html += `<td class="p-3 text-center ${status === 'Работает' ? 'bg-green-100' : 'bg-red-100'}"
-                                        ondblclick="App.addComment('${emp.id}', '${day.date}')">
-                                        ${status} ${comment ? `- ${comment}` : ''}</td>`;
-                        } else {
-                            html += `<td class="p-3 text-center ${status === 'Работает' ? 'bg-green-100' : 'bg-red-100'}">
-                                        ${status} ${comment ? `- ${comment}` : ''}</td>`;
-                        }
+                        html += `<td class="p-3 text-center ${bgColor}" onclick="App.addComment('${emp.id}', '${day.date}')">
+                                    ${status} ${comment ? `(<span class="text-sm text-gray-500">${comment}</span>)` : ''}
+                                  </td>`;
                     });
                     html += `</tr>`;
                 });
@@ -278,59 +194,16 @@ async saveComment(employeeId, date, comment) {
                 this.updateWeekDisplay();
             },
 
-            // Переключение статуса работы
-            async toggleWorkStatus(employeeId, date) {
-                const currentStatus = this.schedules[employeeId] && this.schedules[employeeId][date];
-                const newStatus = currentStatus ? false : true;
-
-                await this.saveSchedule(employeeId, date, newStatus);
-                this.schedules[employeeId][date] = newStatus;
-                this.renderSchedule();
-            },
-
-            // Сохранение статуса работы
-            async saveSchedule(employeeId, date, isWorking) {
-                try {
-                    // Проверяем, существует ли уже запись для этого сотрудника и этой даты
-                    const { data, error } = await this.supabase
-                        .from('schedule')
-                        .select('employee_id, date')
-                        .eq('employee_id', employeeId)
-                        .eq('date', date);
-
-                    if (error) throw error;
-
-                    // Если запись существует, обновляем статус
-                    if (data.length > 0) {
-                        const { updateError } = await this.supabase
-                            .from('schedule')
-                            .update({ is_working: isWorking })
-                            .eq('employee_id', employeeId)
-                            .eq('date', date);
-
-                        if (updateError) throw updateError;
-                    } else {
-                        // Если записи нет, создаем новую
-                        const { insertError } = await this.supabase
-                            .from('schedule')
-                            .insert([{ employee_id: employeeId, date: date, is_working: isWorking }]);
-
-                        if (insertError) throw insertError;
-                    }
-                } catch (error) {
-                    console.error('Ошибка сохранения статуса:', error);
+            // Добавление комментария
+            async addComment(employeeId, date) {
+                const comment = prompt('Введите комментарий:');
+                if (comment !== null) {
+                    await this.saveComment(employeeId, date, comment);
+                    this.renderSchedule(); // Перерисовываем график после добавления комментария
                 }
             },
 
-            // Обработчик долгого клика для добавления комментария
-            addComment(employeeId, date) {
-                const comment = prompt('Введите комментарий:', '');
-                if (comment !== null && comment.trim() !== '') {
-                    this.saveComment(employeeId, date, comment);
-                }
-            },
-
-            // Сохранение комментария
+            // Сохранение комментария в базе данных
             async saveComment(employeeId, date, comment) {
                 try {
                     const { data, error } = await this.supabase
@@ -341,24 +214,21 @@ async saveComment(employeeId, date, comment) {
 
                     if (error) throw error;
 
-                    // Если запись существует, обновляем комментарий
                     if (data.length > 0) {
                         const { updateError } = await this.supabase
                             .from('schedule')
-                            .update({ comment: comment })
+                            .update({ comment })
                             .eq('employee_id', employeeId)
                             .eq('date', date);
 
                         if (updateError) throw updateError;
                     } else {
-                        // Если записи нет, создаем новую
                         const { insertError } = await this.supabase
                             .from('schedule')
-                            .insert([{ employee_id: employeeId, date: date, comment: comment }]);
+                            .insert([{ employee_id: employeeId, date: date, comment }]);
 
                         if (insertError) throw insertError;
                     }
-                    this.loadSchedule(this.currentWeekStart); // Перезагружаем график с новым комментарием
                 } catch (error) {
                     console.error('Ошибка сохранения комментария:', error);
                 }
@@ -407,40 +277,58 @@ async saveComment(employeeId, date, comment) {
                     loginModal.classList.add('hidden');
                 });
 
-                loginSubmit.addEventListener('click', () => {
+                loginSubmit.addEventListener('click', async () => {
                     const username = document.getElementById('login-username').value;
                     const password = document.getElementById('login-password').value;
 
-                    // В реальном приложении добавьте проверку пароля и логина
-                    if (username === 'admin' && password === 'password') {
+                    if (username === 'admin' && password === 'password123') {
                         this.isAdmin = true;
                         loginModal.classList.add('hidden');
-                        this.toggleAdminTabs();
+                        this.showAdminTabs();
                     } else {
                         loginError.classList.remove('hidden');
                     }
                 });
             },
 
-            // Показ/скрытие вкладок админ-панели
-            toggleAdminTabs() {
-                const adminTabs = document.getElementById('admin-tabs');
-                adminTabs.classList.remove('hidden');
+            // Отображение админских вкладок
+            showAdminTabs() {
+                document.getElementById('admin-tabs').classList.remove('hidden');
             },
 
             // Настройка вкладок админ-панели
             setupAdminTabs() {
+                const tabSchedule = document.getElementById('tab-schedule');
+                const tabEmployees = document.getElementById('tab-employees');
+                const tabOvertime = document.getElementById('tab-overtime');
                 const logoutBtn = document.getElementById('logout-btn');
+
                 logoutBtn.addEventListener('click', () => {
                     this.isAdmin = false;
                     document.getElementById('admin-tabs').classList.add('hidden');
+                });
+
+                tabSchedule.addEventListener('click', () => {
+                    document.getElementById('admin-content').innerHTML = '<h2>График сотрудников</h2>';
                     this.renderSchedule();
+                });
+
+                tabEmployees.addEventListener('click', () => {
+                    document.getElementById('admin-content').innerHTML = '<h2>Сотрудники</h2>';
+                    // Здесь будет функционал для работы с сотрудниками
+                });
+
+                tabOvertime.addEventListener('click', () => {
+                    document.getElementById('admin-content').innerHTML = '<h2>Овертаймы</h2>';
+                    // Здесь будет функционал для работы с овертаймами
                 });
             }
         };
 
         // Инициализация приложения
-        App.init();
+        window.onload = () => {
+            App.init();
+        };
     </script>
 </body>
 </html>
