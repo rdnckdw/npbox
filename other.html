@@ -4,473 +4,391 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>График работы сотрудников</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            --primary-color: #4a6fa5;
-            --secondary-color: #166088;
-            --light-color: #e8f1f2;
-            --dark-color: #1a1a1a;
-            --success-color: #4caf50;
-            --warning-color: #ff9800;
-            --error-color: #f44336;
+        .schedule-cell {
+            transition: all 0.2s ease;
         }
-        
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        .schedule-cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
         }
-        
-        body {
-            background-color: #f5f5f5;
-            color: var(--dark-color);
-            line-height: 1.6;
+        .scroll-container {
+            scroll-behavior: smooth;
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
+        .admin-panel {
+            max-height: 80vh;
+            overflow-y: auto;
         }
-        
-        header {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 15px 0;
-            margin-bottom: 20px;
-            text-align: center;
+        .overtime-input {
+            width: 80px;
         }
-        
-        h1, h2, h3 {
-            margin-bottom: 15px;
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s;
         }
-        
-        .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ddd;
+        .fade-enter, .fade-leave-to {
+            opacity: 0;
         }
-        
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            background-color: #f1f1f1;
-            border: 1px solid #ddd;
-            border-bottom: none;
-            margin-right: 5px;
-            border-radius: 5px 5px 0 0;
-        }
-        
-        .tab.active {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        
-        .tab-content {
-            display: none;
-            padding: 20px;
-            background-color: white;
-            border-radius: 0 0 5px 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .controls {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        select, button {
-            padding: 8px 15px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-            background-color: white;
-            cursor: pointer;
-        }
-        
-        button {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            transition: background-color 0.3s;
-        }
-        
-        button:hover {
-            background-color: var(--secondary-color);
-        }
-        
-        .week-navigation {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .schedule-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-            overflow-x: auto;
-        }
-        
-        .schedule-table th, .schedule-table td {
-            border: 1px solid #ddd;
-            padding: 10px;
-            text-align: center;
-        }
-        
-        .schedule-table th {
-            background-color: var(--primary-color);
-            color: white;
-        }
-        
-        .schedule-table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-        
-        .work-day {
-            background-color: var(--success-color);
-            color: white;
-            cursor: pointer;
-        }
-        
-        .day-off {
-            background-color: #f5f5f5;
-            cursor: pointer;
-        }
-        
-        .overtime {
-            background-color: var(--warning-color);
-            color: white;
-            position: relative;
-        }
-        
-        .overtime::after {
-            content: attr(data-hours);
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            font-size: 10px;
-        }
-        
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .modal-content {
-            background-color: white;
-            padding: 20px;
-            border-radius: 5px;
-            width: 90%;
-            max-width: 500px;
-        }
-        
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .close-modal {
-            font-size: 24px;
-            cursor: pointer;
-        }
-        
-        .form-group {
-            margin-bottom: 15px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-        }
-        
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
-        .form-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 10px;
-        }
-        
-        .admin-controls {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        @media (max-width: 768px) {
-            .controls {
-                flex-direction: column;
-            }
-            
-            .week-navigation {
-                justify-content: center;
-            }
-            
-            .schedule-table {
-                font-size: 14px;
-            }
-            
-            .schedule-table th, .schedule-table td {
-                padding: 5px;
-            }
+        .login-modal {
+            transition: all 0.3s ease;
         }
     </style>
 </head>
-<body>
-    <header>
-        <div class="container">
-            <h1>График работы сотрудников</h1>
-        </div>
-    </header>
-    
-    <div class="container">
-        <div class="tabs">
-            <div class="tab active" data-tab="schedule">График</div>
-            <div class="tab" data-tab="admin">Админ-панель</div>
-        </div>
-        
-        <div id="schedule" class="tab-content active">
-            <div class="controls">
-                <select id="employee-select">
-                    <option value="all">Все сотрудники</option>
-                </select>
-                
-                <div class="week-navigation">
-                    <button id="prev-week">&lt; Предыдущая</button>
-                    <span id="week-range">Неделя с ДД.ММ по ДД.ММ</span>
-                    <button id="next-week">Следующая &gt;</button>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-indigo-700">График работы сотрудников</h1>
+            <button id="toggle-admin" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                Админ-панель <i class="fas fa-lock ml-1"></i>
+            </button>
+        </header>
+
+        <!-- Main Content -->
+        <div id="main-content">
+            <!-- Employee Selector -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="w-full md:w-auto">
+                        <label for="employee-select" class="block text-sm font-medium text-gray-700 mb-1">Выберите сотрудника:</label>
+                        <div class="relative">
+                            <select id="employee-select" class="block w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="all">Все сотрудники</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full md:w-auto">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Неделя:</label>
+                        <div class="flex items-center gap-2">
+                            <button id="prev-week" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <span id="week-display" class="font-medium">Загрузка...</span>
+                            <button id="next-week" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="table-container">
-                <table class="schedule-table" id="schedule-table">
-                    <thead>
-                        <tr>
-                            <th>Сотрудник</th>
-                            <th>Пн</th>
-                            <th>Вт</th>
-                            <th>Ср</th>
-                            <th>Чт</th>
-                            <th>Пт</th>
-                            <th>Сб</th>
-                            <th>Вс</th>
-                        </tr>
-                    </thead>
-                    <tbody id="schedule-body">
-                        <!-- Данные будут загружены через JS -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        
-        <div id="admin" class="tab-content">
-            <h2>Администрирование графика</h2>
-            
-            <div class="admin-controls">
-                <button id="add-employee">Добавить сотрудника</button>
-                <button id="save-schedule">Сохранить изменения</button>
-                <div class="week-navigation">
-                    <button id="admin-prev-week">&lt; Предыдущая</button>
-                    <span id="admin-week-range">Неделя с ДД.ММ по ДД.ММ</span>
-                    <button id="admin-next-week">Следующая &gt;</button>
+
+            <!-- Schedule Table -->
+            <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table id="schedule-table" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сотрудник</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Понедельник</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Вторник</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Среда</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Четверг</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Пятница</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Суббота</th>
+                                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Воскресенье</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schedule-body" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="8" class="px-6 py-4 text-center text-gray-500">Загрузка данных...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-            
-            <div class="table-container">
-                <table class="schedule-table" id="admin-schedule-table">
-                    <thead>
-                        <tr>
-                            <th>Сотрудник</th>
-                            <th>Пн</th>
-                            <th>Вт</th>
-                            <th>Ср</th>
-                            <th>Чт</th>
-                            <th>Пт</th>
-                            <th>Сб</th>
-                            <th>Вс</th>
-                        </tr>
-                    </thead>
-                    <tbody id="admin-schedule-body">
-                        <!-- Данные будут загружены через JS -->
-                    </tbody>
-                </table>
+        </div>
+
+        <!-- Login Modal -->
+        <div id="login-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 login-modal">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-indigo-700">Вход в админ-панель</h2>
+                        <button id="close-login" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+                    
+                    <form id="login-form">
+                        <div class="mb-4">
+                            <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Логин:</label>
+                            <input type="text" id="username" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" required>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Пароль:</label>
+                            <input type="password" id="password" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" required>
+                        </div>
+                        
+                        <div id="login-error" class="text-red-500 text-sm mb-4 hidden">Неверный логин или пароль</div>
+                        
+                        <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                            Войти <i class="fas fa-sign-in-alt ml-1"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Panel (Hidden by default) -->
+        <div id="admin-panel" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-6xl admin-panel">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-indigo-700">Административная панель</h2>
+                        <button id="close-admin" class="text-gray-500 hover:text-gray-700">
+                            <i class="fas fa-times text-2xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div class="border-b border-gray-200 mb-6">
+                        <div class="flex space-x-8">
+                            <button id="schedule-tab" class="tab-button active py-4 px-1 border-b-2 border-indigo-500 font-medium text-sm text-indigo-600">График работы</button>
+                            <button id="employees-tab" class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Сотрудники</button>
+                            <button id="overtime-tab" class="tab-button py-4 px-1 border-b-2 border-transparent font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300">Овертаймы</button>
+                        </div>
+                    </div>
+
+                    <!-- Schedule Admin -->
+                    <div id="schedule-admin-content" class="tab-content">
+                        <div class="mb-6 flex flex-wrap items-center gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Неделя:</label>
+                                <div class="flex items-center gap-2">
+                                    <button id="admin-prev-week" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <span id="admin-week-display" class="font-medium">Загрузка...</span>
+                                    <button id="admin-next-week" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <button id="save-schedule" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                                    Сохранить график <i class="fas fa-save ml-1"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table id="admin-schedule-table" class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сотрудник</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Понедельник</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Вторник</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Среда</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Четверг</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Пятница</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Суббота</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Воскресенье</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-schedule-body" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="8" class="px-6 py-4 text-center text-gray-500">Загрузка данных...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Employees Admin -->
+                    <div id="employees-admin-content" class="tab-content hidden">
+                        <div class="mb-6">
+                            <h3 class="text-lg font-medium text-gray-900 mb-2">Добавить нового сотрудника</h3>
+                            <div class="flex flex-wrap gap-4">
+                                <div class="flex-grow">
+                                    <input type="text" id="new-employee-name" placeholder="Имя сотрудника" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                                </div>
+                                <button id="add-employee" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                                    Добавить <i class="fas fa-plus ml-1"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Имя</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="employees-list" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="3" class="px-6 py-4 text-center text-gray-500">Загрузка данных...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Overtime Admin -->
+                    <div id="overtime-admin-content" class="tab-content hidden">
+                        <div class="mb-6 flex flex-wrap items-center gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Неделя:</label>
+                                <div class="flex items-center gap-2">
+                                    <button id="overtime-prev-week" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full">
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <span id="overtime-week-display" class="font-medium">Загрузка...</span>
+                                    <button id="overtime-next-week" class="bg-gray-200 hover:bg-gray-300 p-2 rounded-full">
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <button id="save-overtime" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                                    Сохранить овертаймы <i class="fas fa-save ml-1"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сотрудник</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Понедельник</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Вторник</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Среда</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Четверг</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Пятница</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Суббота</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Воскресенье</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="overtime-body" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="8" class="px-6 py-4 text-center text-gray-500">Загрузка данных...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
-    <!-- Модальное окно для редактирования дня -->
-    <div class="modal" id="day-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Редактировать день</h3>
-                <span class="close-modal">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="day-status">Статус:</label>
-                    <select id="day-status">
-                        <option value="work">Рабочий день</option>
-                        <option value="off">Выходной</option>
-                        <option value="overtime">Овертайм</option>
-                    </select>
-                </div>
-                <div class="form-group" id="overtime-group" style="display: none;">
-                    <label for="overtime-hours">Часы овертайма:</label>
-                    <input type="number" id="overtime-hours" min="1" max="24" value="1">
-                </div>
-                <input type="hidden" id="edit-employee-id">
-                <input type="hidden" id="edit-day-index">
-            </div>
-            <div class="form-actions">
-                <button id="cancel-edit">Отмена</button>
-                <button id="save-day">Сохранить</button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Модальное окно для добавления сотрудника -->
-    <div class="modal" id="employee-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Добавить сотрудника</h3>
-                <span class="close-modal">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label for="employee-name">Имя сотрудника:</label>
-                    <input type="text" id="employee-name" placeholder="Введите имя">
-                </div>
-            </div>
-            <div class="form-actions">
-                <button id="cancel-add">Отмена</button>
-                <button id="save-employee">Добавить</button>
-            </div>
-        </div>
-    </div>
-    
+
     <script>
-        // Конфигурация Supabase
-        const SUPABASE_URL = 'https://brhrqswautuamwkworrf.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyaHJxc3dhdXR1YW13a3dvcnJmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTgyNTk3NSwiZXhwIjoyMDYxNDAxOTc1fQ.HBxafrvjO2-PnrBQp7Obc5dFFZWO_p5DQySUDZu-IfI';
-        
-        // Инициализация Supabase
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
-        // Текущая дата и выбранная неделя
-        let currentDate = new Date();
-        let currentWeekStart = getMonday(currentDate);
-        
-        // Данные сотрудников и графика
+        // Supabase configuration
+        const supabaseUrl = 'https://brhrqswautuamwkworrf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyaHJxc3dhdXR1YW13a3dvcnJmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTgyNTk3NSwiZXhwIjoyMDYxNDAxOTc1fQ.HBxafrvjO2-PnrBQp7Obc5dFFZWO_p5DQySUDZu-IfI';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Global variables
+        let currentWeekStart = getMonday(new Date());
         let employees = [];
-        let scheduleData = {};
-        
-        // DOM элементы
-        const tabButtons = document.querySelectorAll('.tab');
-        const tabContents = document.querySelectorAll('.tab-content');
+        let schedules = {};
+        let overtimes = {};
+        let selectedEmployeeId = 'all';
+        let isAdminLoggedIn = false;
+
+        // DOM elements
         const employeeSelect = document.getElementById('employee-select');
-        const weekRange = document.getElementById('week-range');
+        const weekDisplay = document.getElementById('week-display');
+        const scheduleBody = document.getElementById('schedule-body');
         const prevWeekBtn = document.getElementById('prev-week');
         const nextWeekBtn = document.getElementById('next-week');
-        const scheduleBody = document.getElementById('schedule-body');
-        const adminWeekRange = document.getElementById('admin-week-range');
+        
+        // Login elements
+        const loginModal = document.getElementById('login-modal');
+        const closeLoginBtn = document.getElementById('close-login');
+        const loginForm = document.getElementById('login-form');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const loginError = document.getElementById('login-error');
+        
+        // Admin elements
+        const toggleAdminBtn = document.getElementById('toggle-admin');
+        const adminPanel = document.getElementById('admin-panel');
+        const closeAdminBtn = document.getElementById('close-admin');
+        const adminWeekDisplay = document.getElementById('admin-week-display');
+        const adminScheduleBody = document.getElementById('admin-schedule-body');
         const adminPrevWeekBtn = document.getElementById('admin-prev-week');
         const adminNextWeekBtn = document.getElementById('admin-next-week');
-        const adminScheduleBody = document.getElementById('admin-schedule-body');
-        const addEmployeeBtn = document.getElementById('add-employee');
         const saveScheduleBtn = document.getElementById('save-schedule');
-        const dayModal = document.getElementById('day-modal');
-        const employeeModal = document.getElementById('employee-modal');
-        const dayStatus = document.getElementById('day-status');
-        const overtimeGroup = document.getElementById('overtime-group');
-        const overtimeHours = document.getElementById('overtime-hours');
-        const editEmployeeId = document.getElementById('edit-employee-id');
-        const editDayIndex = document.getElementById('edit-day-index');
-        const saveDayBtn = document.getElementById('save-day');
-        const cancelEditBtn = document.getElementById('cancel-edit');
-        const employeeName = document.getElementById('employee-name');
-        const saveEmployeeBtn = document.getElementById('save-employee');
-        const cancelAddBtn = document.getElementById('cancel-add');
-        const closeModalButtons = document.querySelectorAll('.close-modal');
         
-        // Инициализация приложения
+        // Tabs
+        const scheduleTab = document.getElementById('schedule-tab');
+        const employeesTab = document.getElementById('employees-tab');
+        const overtimeTab = document.getElementById('overtime-tab');
+        const scheduleAdminContent = document.getElementById('schedule-admin-content');
+        const employeesAdminContent = document.getElementById('employees-admin-content');
+        const overtimeAdminContent = document.getElementById('overtime-admin-content');
+        
+        // Employees admin
+        const newEmployeeName = document.getElementById('new-employee-name');
+        const addEmployeeBtn = document.getElementById('add-employee');
+        const employeesList = document.getElementById('employees-list');
+        
+        // Overtime admin
+        const overtimeWeekDisplay = document.getElementById('overtime-week-display');
+        const overtimeBody = document.getElementById('overtime-body');
+        const overtimePrevWeekBtn = document.getElementById('overtime-prev-week');
+        const overtimeNextWeekBtn = document.getElementById('overtime-next-week');
+        const saveOvertimeBtn = document.getElementById('save-overtime');
+
+        // Initialize the app
         document.addEventListener('DOMContentLoaded', async () => {
-            // Загрузка данных
+            // Load employees
             await loadEmployees();
-            await loadSchedule();
             
-            // Обновление интерфейса
+            // Load initial schedule
+            await loadSchedule(currentWeekStart);
+            await loadOvertime(currentWeekStart);
+            
+            // Update UI
             updateWeekDisplay();
             updateAdminWeekDisplay();
-            renderSchedule();
-            renderAdminSchedule();
+            updateOvertimeWeekDisplay();
             
-            // Настройка обработчиков событий
+            // Set up event listeners
             setupEventListeners();
         });
-        
-        // Функции для работы с датами
+
+        // Helper functions
         function getMonday(date) {
             const d = new Date(date);
             const day = d.getDay();
             const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
             return new Date(d.setDate(diff));
         }
-        
+
         function formatDate(date) {
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            return `${day}.${month}`;
+            const options = { day: 'numeric', month: 'long', year: 'numeric' };
+            return date.toLocaleDateString('ru-RU', options);
         }
-        
+
         function getWeekDates(startDate) {
             const dates = [];
             for (let i = 0; i < 7; i++) {
                 const date = new Date(startDate);
-                date.setDate(startDate.getDate() + i);
+                date.setDate(date.getDate() + i);
                 dates.push(date);
             }
             return dates;
         }
-        
+
         function getWeekKey(date) {
-            const year = date.getFullYear();
-            const week = getWeekNumber(date);
-            return `${year}-W${week}`;
-        }
-        
-        function getWeekNumber(date) {
             const d = new Date(date);
             d.setHours(0, 0, 0, 0);
-            d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
-            const week1 = new Date(d.getFullYear(), 0, 4);
-            return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+            const year = d.getFullYear();
+            const month = d.getMonth() + 1;
+            const day = d.getDate();
+            return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
         }
-        
-        // Загрузка данных из Supabase
+
+        // Data loading functions
         async function loadEmployees() {
             try {
                 const { data, error } = await supabase
@@ -481,52 +399,141 @@
                 if (error) throw error;
                 
                 employees = data;
-                updateEmployeeSelect();
+                populateEmployeeSelect();
+                populateEmployeesList();
             } catch (error) {
-                console.error('Ошибка загрузки сотрудников:', error);
-                alert('Не удалось загрузить список сотрудников');
+                console.error('Error loading employees:', error);
+                alert('Ошибка загрузки списка сотрудников');
             }
         }
-        
-        async function loadSchedule() {
+
+        async function loadSchedule(weekStart) {
+            const weekKey = getWeekKey(weekStart);
+            
+            // Check if we already have this week's data
+            if (schedules[weekKey]) {
+                return;
+            }
+            
+            const weekDates = getWeekDates(weekStart);
+            const startDate = weekDates[0];
+            const endDate = weekDates[6];
+            
             try {
-                const weekKey = getWeekKey(currentWeekStart);
-                
                 const { data, error } = await supabase
                     .from('schedule')
-                    .select('*')
-                    .eq('week_key', weekKey);
+                    .select(`
+                        employee_id,
+                        date,
+                        is_working,
+                        employees (name)
+                    `)
+                    .gte('date', startDate.toISOString().split('T')[0])
+                    .lte('date', endDate.toISOString().split('T')[0]);
                 
                 if (error) throw error;
                 
-                // Инициализация структуры данных
-                scheduleData[weekKey] = {};
+                // Organize data by employee
+                const scheduleData = {};
+                employees.forEach(emp => {
+                    scheduleData[emp.id] = {};
+                    weekDates.forEach(date => {
+                        scheduleData[emp.id][date.toISOString().split('T')[0]] = {
+                            is_working: false, // default
+                            employee_name: emp.name
+                        };
+                    });
+                });
                 
-                // Заполнение данными из базы
-                if (data && data.length > 0) {
-                    data.forEach(row => {
-                        if (!scheduleData[weekKey][row.employee_id]) {
-                            scheduleData[weekKey][row.employee_id] = Array(7).fill({ type: 'off', overtime: 0 });
-                        }
-                        
-                        const days = JSON.parse(row.days);
-                        scheduleData[weekKey][row.employee_id] = days;
-                    });
-                } else {
-                    // Создаем пустой график для всех сотрудников
-                    employees.forEach(employee => {
-                        scheduleData[weekKey][employee.id] = Array(7).fill({ type: 'off', overtime: 0 });
-                    });
-                }
+                // Fill with actual data
+                data.forEach(item => {
+                    if (scheduleData[item.employee_id]) {
+                        scheduleData[item.employee_id][item.date] = {
+                            is_working: item.is_working,
+                            employee_name: item.employees.name
+                        };
+                    }
+                });
+                
+                // Store in cache
+                schedules[weekKey] = scheduleData;
+                
+                // Update UI
+                updateScheduleTable();
+                updateAdminScheduleTable();
             } catch (error) {
-                console.error('Ошибка загрузки графика:', error);
-                alert('Не удалось загрузить график работы');
+                console.error('Error loading schedule:', error);
+                alert('Ошибка загрузки графика');
             }
         }
-        
-        // Обновление интерфейса
-        function updateEmployeeSelect() {
-            employeeSelect.innerHTML = '<option value="all">Все сотрудники</option>';
+
+        async function loadOvertime(weekStart) {
+            const weekKey = getWeekKey(weekStart);
+            
+            // Check if we already have this week's data
+            if (overtimes[weekKey]) {
+                return;
+            }
+            
+            const weekDates = getWeekDates(weekStart);
+            const startDate = weekDates[0];
+            const endDate = weekDates[6];
+            
+            try {
+                const { data, error } = await supabase
+                    .from('overtime')
+                    .select(`
+                        employee_id,
+                        date,
+                        hours,
+                        employees (name)
+                    `)
+                    .gte('date', startDate.toISOString().split('T')[0])
+                    .lte('date', endDate.toISOString().split('T')[0]);
+                
+                if (error) throw error;
+                
+                // Organize data by employee
+                const overtimeData = {};
+                employees.forEach(emp => {
+                    overtimeData[emp.id] = {};
+                    weekDates.forEach(date => {
+                        overtimeData[emp.id][date.toISOString().split('T')[0]] = {
+                            hours: 0, // default
+                            employee_name: emp.name
+                        };
+                    });
+                });
+                
+                // Fill with actual data
+                data.forEach(item => {
+                    if (overtimeData[item.employee_id]) {
+                        overtimeData[item.employee_id][item.date] = {
+                            hours: item.hours,
+                            employee_name: item.employees.name
+                        };
+                    }
+                });
+                
+                // Store in cache
+                overtimes[weekKey] = overtimeData;
+                
+                // Update UI
+                updateOvertimeTable();
+            } catch (error) {
+                console.error('Error loading overtime:', error);
+                alert('Ошибка загрузки овертаймов');
+            }
+        }
+
+        // UI update functions
+        function populateEmployeeSelect() {
+            employeeSelect.innerHTML = '';
+            
+            const allOption = document.createElement('option');
+            allOption.value = 'all';
+            allOption.textContent = 'Все сотрудники';
+            employeeSelect.appendChild(allOption);
             
             employees.forEach(employee => {
                 const option = document.createElement('option');
@@ -535,338 +542,98 @@
                 employeeSelect.appendChild(option);
             });
         }
-        
-        function updateWeekDisplay() {
-            const weekEnd = new Date(currentWeekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            
-            weekRange.textContent = `Неделя с ${formatDate(currentWeekStart)} по ${formatDate(weekEnd)}`;
-        }
-        
-        function updateAdminWeekDisplay() {
-            const weekEnd = new Date(currentWeekStart);
-            weekEnd.setDate(weekEnd.getDate() + 6);
-            
-            adminWeekRange.textContent = `Неделя с ${formatDate(currentWeekStart)} по ${formatDate(weekEnd)}`;
-        }
-        
-        function renderSchedule() {
-            const selectedEmployee = employeeSelect.value;
-            const weekKey = getWeekKey(currentWeekStart);
-            const weekData = scheduleData[weekKey] || {};
-            
-            scheduleBody.innerHTML = '';
-            
-            const employeesToShow = selectedEmployee === 'all' 
-                ? employees 
-                : employees.filter(e => e.id == selectedEmployee);
-            
-            if (employeesToShow.length === 0) {
-                const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="8">Нет данных для отображения</td>';
-                scheduleBody.appendChild(row);
-                return;
-            }
-            
-            employeesToShow.forEach(employee => {
-                const row = document.createElement('tr');
-                
-                // Имя сотрудника
-                const nameCell = document.createElement('td');
-                nameCell.textContent = employee.name;
-                row.appendChild(nameCell);
-                
-                // Дни недели
-                const employeeSchedule = weekData[employee.id] || Array(7).fill({ type: 'off', overtime: 0 });
-                
-                for (let i = 0; i < 7; i++) {
-                    const dayCell = document.createElement('td');
-                    const dayData = employeeSchedule[i] || { type: 'off', overtime: 0 };
-                    
-                    if (dayData.type === 'work') {
-                        dayCell.className = 'work-day';
-                        dayCell.textContent = 'Работа';
-                    } else if (dayData.type === 'overtime') {
-                        dayCell.className = 'overtime';
-                        dayCell.textContent = 'Овертайм';
-                        dayCell.setAttribute('data-hours', `${dayData.overtime}ч`);
-                    } else {
-                        dayCell.className = 'day-off';
-                        dayCell.textContent = 'Выходной';
-                    }
-                    
-                    row.appendChild(dayCell);
-                }
-                
-                scheduleBody.appendChild(row);
-            });
-        }
-        
-        function renderAdminSchedule() {
-            const weekKey = getWeekKey(currentWeekStart);
-            const weekData = scheduleData[weekKey] || {};
-            
-            adminScheduleBody.innerHTML = '';
+
+        function populateEmployeesList() {
+            employeesList.innerHTML = '';
             
             if (employees.length === 0) {
                 const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="8">Нет сотрудников</td>';
-                adminScheduleBody.appendChild(row);
+                row.innerHTML = '<td colspan="3" class="px-6 py-4 text-center text-gray-500">Нет сотрудников</td>';
+                employeesList.appendChild(row);
                 return;
             }
             
             employees.forEach(employee => {
                 const row = document.createElement('tr');
                 
-                // Имя сотрудника
+                const idCell = document.createElement('td');
+                idCell.className = 'px-6 py-4 whitespace-nowrap text-sm text-gray-500';
+                idCell.textContent = employee.id;
+                
                 const nameCell = document.createElement('td');
-                nameCell.textContent = employee.name;
+                nameCell.className = 'px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900';
+                
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.value = employee.name;
+                nameInput.className = 'px-2 py-1 border border-gray-300 rounded focus:ring-indigo-500 focus:border-indigo-500';
+                nameInput.dataset.employeeId = employee.id;
+                
+                nameCell.appendChild(nameInput);
+                
+                const actionsCell = document.createElement('td');
+                actionsCell.className = 'px-6 py-4 whitespace-nowrap text-right text-sm font-medium';
+                
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'text-indigo-600 hover:text-indigo-900 mr-4';
+                saveBtn.innerHTML = '<i class="fas fa-save"></i> Сохранить';
+                saveBtn.dataset.employeeId = employee.id;
+                saveBtn.addEventListener('click', saveEmployeeName);
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'text-red-600 hover:text-red-900';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Удалить';
+                deleteBtn.dataset.employeeId = employee.id;
+                deleteBtn.addEventListener('click', deleteEmployee);
+                
+                actionsCell.appendChild(saveBtn);
+                actionsCell.appendChild(deleteBtn);
+                
+                row.appendChild(idCell);
                 row.appendChild(nameCell);
+                row.appendChild(actionsCell);
                 
-                // Дни недели
-                const employeeSchedule = weekData[employee.id] || Array(7).fill({ type: 'off', overtime: 0 });
-                
-                for (let i = 0; i < 7; i++) {
-                    const dayCell = document.createElement('td');
-                    const dayData = employeeSchedule[i] || { type: 'off', overtime: 0 };
-                    
-                    if (dayData.type === 'work') {
-                        dayCell.className = 'work-day';
-                        dayCell.textContent = 'Работа';
-                    } else if (dayData.type === 'overtime') {
-                        dayCell.className = 'overtime';
-                        dayCell.textContent = 'Овертайм';
-                        dayCell.setAttribute('data-hours', `${dayData.overtime}ч`);
-                    } else {
-                        dayCell.className = 'day-off';
-                        dayCell.textContent = 'Выходной';
-                    }
-                    
-                    // Добавляем обработчик клика
-                    dayCell.addEventListener('click', () => openDayModal(employee.id, i, dayData));
-                    row.appendChild(dayCell);
-                }
-                
-                adminScheduleBody.appendChild(row);
+                employeesList.appendChild(row);
             });
         }
-        
-        // Работа с модальными окнами
-        function openDayModal(employeeId, dayIndex, dayData) {
-            editEmployeeId.value = employeeId;
-            editDayIndex.value = dayIndex;
-            
-            // Установка текущих значений
-            dayStatus.value = dayData.type;
-            overtimeHours.value = dayData.overtime || 1;
-            
-            // Показ/скрытие поля овертайма
-            toggleOvertimeField();
-            
-            dayModal.style.display = 'flex';
+
+        function updateWeekDisplay() {
+            const weekDates = getWeekDates(currentWeekStart);
+            const startDate = weekDates[0];
+            const endDate = weekDates[6];
+            weekDisplay.textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
         }
-        
-        function toggleOvertimeField() {
-            if (dayStatus.value === 'overtime') {
-                overtimeGroup.style.display = 'block';
-            } else {
-                overtimeGroup.style.display = 'none';
-            }
+
+        function updateAdminWeekDisplay() {
+            const weekDates = getWeekDates(currentWeekStart);
+            const startDate = weekDates[0];
+            const endDate = weekDates[6];
+            adminWeekDisplay.textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
         }
-        
-        async function saveDayChanges() {
-            const employeeId = editEmployeeId.value;
-            const dayIndex = editDayIndex.value;
-            const type = dayStatus.value;
-            const overtime = type === 'overtime' ? parseInt(overtimeHours.value) : 0;
-            
+
+        function updateOvertimeWeekDisplay() {
+            const weekDates = getWeekDates(currentWeekStart);
+            const startDate = weekDates[0];
+            const endDate = weekDates[6];
+            overtimeWeekDisplay.textContent = `${formatDate(startDate)} - ${formatDate(endDate)}`;
+        }
+
+        function updateScheduleTable() {
             const weekKey = getWeekKey(currentWeekStart);
+            const weekData = schedules[weekKey];
             
-            // Обновляем данные в памяти
-            if (!scheduleData[weekKey]) {
-                scheduleData[weekKey] = {};
-            }
-            
-            if (!scheduleData[weekKey][employeeId]) {
-                scheduleData[weekKey][employeeId] = Array(7).fill({ type: 'off', overtime: 0 });
-            }
-            
-            scheduleData[weekKey][employeeId][dayIndex] = { type, overtime };
-            
-            // Закрываем модальное окно
-            dayModal.style.display = 'none';
-            
-            // Обновляем отображение
-            renderAdminSchedule();
-        }
-        
-        async function addNewEmployee() {
-            const name = employeeName.value.trim();
-            
-            if (!name) {
-                alert('Введите имя сотрудника');
+            if (!weekData) {
+                scheduleBody.innerHTML = '<tr><td colspan="8" class="px-6 py-4 text-center text-gray-500">Данные не загружены</td></tr>';
                 return;
             }
             
-            try {
-                const { data, error } = await supabase
-                    .from('employees')
-                    .insert([{ name }])
-                    .select();
-                
-                if (error) throw error;
-                
-                // Добавляем нового сотрудника в локальный массив
-                employees.push(data[0]);
-                
-                // Обновляем выпадающий список
-                updateEmployeeSelect();
-                
-                // Закрываем модальное окно
-                employeeModal.style.display = 'none';
-                employeeName.value = '';
-                
-                // Обновляем график
-                renderAdminSchedule();
-            } catch (error) {
-                console.error('Ошибка добавления сотрудника:', error);
-                alert('Не удалось добавить сотрудника');
-            }
-        }
-        
-        // Сохранение графика в Supabase
-        async function saveScheduleToDB() {
-            const weekKey = getWeekKey(currentWeekStart);
-            const weekData = scheduleData[weekKey] || {};
+            scheduleBody.innerHTML = '';
             
-            try {
-                // Для каждого сотрудника сохраняем его график
-                for (const employeeId in weekData) {
-                    const days = weekData[employeeId];
-                    
-                    // Проверяем, есть ли уже запись для этого сотрудника и недели
-                    const { data: existing, error: checkError } = await supabase
-                        .from('schedule')
-                        .select('id')
-                        .eq('week_key', weekKey)
-                        .eq('employee_id', employeeId)
-                        .maybeSingle();
-                    
-                    if (checkError) throw checkError;
-                    
-                    if (existing) {
-                        // Обновляем существующую запись
-                        const { error } = await supabase
-                            .from('schedule')
-                            .update({ days: JSON.stringify(days) })
-                            .eq('id', existing.id);
-                        
-                        if (error) throw error;
-                    } else {
-                        // Создаем новую запись
-                        const { error } = await supabase
-                            .from('schedule')
-                            .insert([{
-                                week_key: weekKey,
-                                employee_id: employeeId,
-                                days: JSON.stringify(days)
-                            }]);
-                        
-                        if (error) throw error;
-                    }
-                }
-                
-                alert('График успешно сохранен');
-            } catch (error) {
-                console.error('Ошибка сохранения графика:', error);
-                alert('Не удалось сохранить график');
-            }
-        }
-        
-        // Навигация по неделям
-        function changeWeek(weeks) {
-            currentWeekStart = new Date(currentWeekStart);
-            currentWeekStart.setDate(currentWeekStart.getDate() + (weeks * 7));
+            // Filter employees based on selection
+            const displayEmployees = selectedEmployeeId === 'all' 
+                ? employees 
+                : employees.filter(emp => emp.id === selectedEmployeeId);
             
-            updateWeekDisplay();
-            updateAdminWeekDisplay();
-            
-            // Проверяем, есть ли данные для новой недели
-            const weekKey = getWeekKey(currentWeekStart);
-            
-            if (!scheduleData[weekKey]) {
-                // Загружаем данные для новой недели
-                loadSchedule().then(() => {
-                    renderSchedule();
-                    renderAdminSchedule();
-                });
-            } else {
-                // Просто обновляем отображение
-                renderSchedule();
-                renderAdminSchedule();
-            }
-        }
-        
-        // Настройка обработчиков событий
-        function setupEventListeners() {
-            // Переключение вкладок
-            tabButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const tabId = button.getAttribute('data-tab');
-                    
-                    // Обновляем активные кнопки
-                    tabButtons.forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
-                    
-                    // Обновляем активные вкладки
-                    tabContents.forEach(content => content.classList.remove('active'));
-                    document.getElementById(tabId).classList.add('active');
-                });
-            });
-            
-            // Изменение выбранного сотрудника
-            employeeSelect.addEventListener('change', renderSchedule);
-            
-            // Навигация по неделям
-            prevWeekBtn.addEventListener('click', () => changeWeek(-1));
-            nextWeekBtn.addEventListener('click', () => changeWeek(1));
-            adminPrevWeekBtn.addEventListener('click', () => changeWeek(-1));
-            adminNextWeekBtn.addEventListener('click', () => changeWeek(1));
-            
-            // Модальное окно дня
-            dayStatus.addEventListener('change', toggleOvertimeField);
-            saveDayBtn.addEventListener('click', saveDayChanges);
-            cancelEditBtn.addEventListener('click', () => dayModal.style.display = 'none');
-            
-            // Модальное окно сотрудника
-            addEmployeeBtn.addEventListener('click', () => employeeModal.style.display = 'flex');
-            saveEmployeeBtn.addEventListener('click', addNewEmployee);
-            cancelAddBtn.addEventListener('click', () => {
-                employeeModal.style.display = 'none';
-                employeeName.value = '';
-            });
-            
-            // Сохранение графика
-            saveScheduleBtn.addEventListener('click', saveScheduleToDB);
-            
-            // Закрытие модальных окон
-            closeModalButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    dayModal.style.display = 'none';
-                    employeeModal.style.display = 'none';
-                    employeeName.value = '';
-                });
-            });
-            
-            // Закрытие по клику вне модального окна
-            window.addEventListener('click', (e) => {
-                if (e.target === dayModal) dayModal.style.display = 'none';
-                if (e.target === employeeModal) employeeModal.style.display = 'none';
-            });
-        }
-    </script>
-    
-    <!-- Подключаем Supabase клиент -->
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-</body>
+            if (displayEmployees.length === 0) {
+                scheduleBody.innerHTML =
 </html>
