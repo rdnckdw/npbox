@@ -124,43 +124,122 @@
                 });
             },
 
-            // Загрузка графика
-            async loadSchedule(weekStart) {
-                try {
-                    const start = weekStart.toISOString().split('T')[0];
-                    const end = new Date(weekStart.getTime() + 6 * 86400000).toISOString().split('T')[0];
+// Загрузка графика с комментариями
+async loadSchedule(weekStart) {
+    try {
+        const start = weekStart.toISOString().split('T')[0];
+        const end = new Date(weekStart.getTime() + 6 * 86400000).toISOString().split('T')[0];
 
-                    const { data, error } = await this.supabase
-                        .from('schedule')
-                        .select('employee_id, date, is_working, comment')
-                        .gte('date', start)
-                        .lte('date', end);
+        const { data, error } = await this.supabase
+            .from('schedule')
+            .select('employee_id, date, is_working, comment')  // Добавлен столбец comment
+            .gte('date', start)
+            .lte('date', end);
 
-                    if (error) throw error;
+        if (error) throw error;
 
-                    this.schedules = {};
-                    this.employees.forEach(e => this.schedules[e.id] = {});
+        this.schedules = {};
+        this.employees.forEach(e => this.schedules[e.id] = {});
 
-                    data.forEach(r => {
-                        if (this.schedules[r.employee_id]) {
-                            this.schedules[r.employee_id][r.date] = { isWorking: r.is_working, comment: r.comment };
-                        }
-                    });
-                } catch (error) {
-                    console.error('Ошибка загрузки графика:', error);
-                }
-            },
+        data.forEach(r => {
+            if (this.schedules[r.employee_id]) {
+                this.schedules[r.employee_id][r.date] = { 
+                    isWorking: r.is_working, 
+                    comment: r.comment  // Добавлен комментарий
+                };
+            }
+        });
+    } catch (error) {
+        console.error('Ошибка загрузки графика:', error);
+    }
+}
 
-            // Отображение графика
-            renderSchedule() {
-                const container = document.getElementById('schedule-container');
-                const weekDates = [...Array(7)].map((_, i) => {
-                    const day = new Date(this.currentWeekStart.getTime() + i * 86400000);
-                    return {
-                        date: day.toISOString().split('T')[0],
-                        dayName: day.toLocaleDateString('ru-RU', { weekday: 'short' })
-                    };
-                });
+
+          // Отображение графика
+renderSchedule() {
+    const container = document.getElementById('schedule-container');
+    const weekDates = [...Array(7)].map((_, i) => {
+        const day = new Date(this.currentWeekStart.getTime() + i * 86400000);
+        return {
+            date: day.toISOString().split('T')[0],
+            dayName: day.toLocaleDateString('ru-RU', { weekday: 'short' })
+        };
+    });
+
+    let html = `<table class="min-w-full"><thead><tr><th class="p-3 text-left">Сотрудник</th>`;
+    weekDates.forEach(day => {
+        html += `<th class="p-3 text-center">${day.dayName}<br>${day.date.split('-')[2]}</th>`;
+    });
+    html += `</tr></thead><tbody>`;
+
+    const employeesToShow = this.selectedEmployeeId === 'all'
+        ? this.employees
+        : this.employees.filter(e => e.id === this.selectedEmployeeId);
+
+    employeesToShow.forEach(emp => {
+        html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
+        weekDates.forEach(day => {
+            const statusData = this.schedules[emp.id] && this.schedules[emp.id][day.date];
+            const status = statusData ? (statusData.isWorking ? 'Работает' : 'Отдыхает') : 'Работает'; // По умолчанию "Работает"
+            const comment = statusData ? statusData.comment : ''; // Получаем комментарий, если есть
+            const bgColor = statusData && statusData.isWorking ? 'bg-green-100' : 'bg-red-100';
+
+            html += `<td class="p-3 text-center ${bgColor}" onclick="App.addComment('${emp.id}', '${day.date}')">
+                        ${status} ${comment ? `(<span class="text-sm text-gray-500">${comment}</span>)` : ''}
+                      </td>`;
+        });
+        html += `</tr>`;
+    });
+
+    container.innerHTML = html;
+    this.updateWeekDisplay();
+}
+
+// Функция для добавления или редактирования комментария
+async addComment(employeeId, date) {
+    const comment = prompt('Введите комментарий:');
+    if (comment !== null) {
+        await this.saveComment(employeeId, date, comment);
+        this.renderSchedule(); // Перерисовываем график после добавления комментария
+    }
+}
+
+// Сохранение комментария в базе данных
+async saveComment(employeeId, date, comment) {
+    try {
+        // Проверяем, существует ли уже запись для этого сотрудника и этой даты
+        const { data, error } = await this.supabase
+            .from('schedule')
+            .select('employee_id, date')
+            .eq('employee_id', employeeId)
+            .eq('date', date);
+
+        if (error) throw error;
+
+        // Если запись существует, обновляем комментарий
+        if (data.length > 0) {
+            const { updateError } = await this.supabase
+                .from('schedule')
+                .update({ comment })
+                .eq('employee_id', employeeId)
+                .eq('date', date);
+
+            if (updateError) throw updateError;
+            console.log(`Комментарий для сотрудника ${employeeId} на ${date} обновлен.`);
+        } else {
+            // Если записи нет, создаем новую запись с комментарием
+            const { insertError } = await this.supabase
+                .from('schedule')
+                .insert([{ employee_id: employeeId, date: date, comment }]);
+
+            if (insertError) throw insertError;
+            console.log(`Комментарий для сотрудника ${employeeId} на ${date} добавлен.`);
+        }
+    } catch (error) {
+        console.error('Ошибка сохранения комментария:', error);
+    }
+}
+
 
                 let html = `<table class="min-w-full"><thead><tr><th class="p-3 text-left">Сотрудник</th>`;
                 weekDates.forEach(day => {
