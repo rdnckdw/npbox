@@ -45,9 +45,9 @@
   </div>
 
 <script>
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 const supabaseUrl = 'https://brhrqswautuamwkworrf.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJyaHJxc3dhdXR1YW13a3dvcnJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU4MjU5NzUsImV4cCI6MjA2MTQwMTk3NX0.AsHiUVQhMMQPmUL4JpZOSrJ_qkM2jobVbLI4xIOsjwo';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 let currentWeekStart = getMonday(new Date());
 let employees = [];
@@ -91,6 +91,83 @@ async function loadSchedule(weekStart) {
       if (schedules[r.employee_id]) schedules[r.employee_id][r.date] = r.is_working;
     });
   }
+}
+
+function renderSchedule() {
+  const container = document.getElementById('schedule-container');
+  const weekDates = [...Array(7)].map((_, i) => {
+    const day = new Date(currentWeekStart.getTime() + i * 86400000);
+    return {
+      date: day.toISOString().split('T')[0],
+      dayName: day.toLocaleDateString('ru-RU', { weekday: 'short' })
+    };
+  });
+
+  let html = `<table class="min-w-full"><thead><tr><th class="p-3 text-left">Сотрудник</th>`;
+  weekDates.forEach(day => {
+    html += `<th class="p-3 text-center">${day.dayName}<br>${day.date.split('-')[2]}</th>`;
+  });
+  html += `</tr></thead><tbody>`;
+
+  const employeesToShow = selectedEmployeeId === 'all' 
+    ? employees 
+    : employees.filter(e => e.id === selectedEmployeeId);
+
+  employeesToShow.forEach(emp => {
+    html += `<tr class="border-t"><td class="p-3 font-medium">${emp.name}</td>`;
+    weekDates.forEach(day => {
+      const isWorking = schedules[emp.id] && schedules[emp.id][day.date];
+      const bgColor = isWorking ? 'bg-green-100' : 'bg-red-100';
+      const text = isWorking ? 'Работает' : 'Отдыхает';
+      
+      if (isAdmin) {
+        html += `<td class="p-3 text-center ${bgColor}">
+          <select class="border rounded p-1" data-employee="${emp.id}" data-date="${day.date}">
+            <option value="true" ${isWorking ? 'selected' : ''}>Работает</option>
+            <option value="false" ${!isWorking ? 'selected' : ''}>Отдыхает</option>
+          </select>
+        </td>`;
+      } else {
+        html += `<td class="p-3 text-center ${bgColor}">${text}</td>`;
+      }
+    });
+    html += `</tr>`;
+  });
+
+  if (isAdmin) {
+    html += `</tbody></table>
+      <div class="p-4 text-center">
+        <button onclick="saveScheduleChanges()" class="bg-green-600 text-white px-6 py-2 rounded">
+          Сохранить изменения
+        </button>
+      </div>`;
+  } else {
+    html += `</tbody></table>`;
+  }
+
+  container.innerHTML = html;
+  updateWeekDisplay();
+}
+
+async function saveScheduleChanges() {
+  const selects = document.querySelectorAll('select[data-employee]');
+  const updates = [];
+
+  selects.forEach(select => {
+    updates.push({
+      employee_id: select.dataset.employee,
+      date: select.dataset.date,
+      is_working: select.value === 'true'
+    });
+  });
+
+  for (const record of updates) {
+    await supabase.from('schedule').upsert(record, { onConflict: ['employee_id', 'date'] });
+  }
+
+  alert('Изменения сохранены!');
+  await loadSchedule(currentWeekStart);
+  renderSchedule();
 }
 
 function setupEmployeeSelector() {
