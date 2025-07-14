@@ -105,7 +105,9 @@
           <tr><td>1 кг плоский</td><td><input type="tel" inputmode="tel" id="box4" oninput="updateTotal()"></td><td><span id="total4" style="font-weight: bold;">0</span></td></tr>
           <tr><td>2 кг квадрат</td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="total5" style="font-weight: bold;">0</span></td></tr>
           <tr><td>2 кг плоские</td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="total6" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>5 кг</td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="total7" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>3 кг квадрат</td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="tota17" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>3 кг плоские</td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="tota18" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>5 кг</td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="tota19" style="font-weight: bold;">0</span></td></tr>
     </tbody>
   </table>
 
@@ -173,7 +175,7 @@
 
     function sendToTelegram() {
       let message = "";
-      let volumes = ["0.5 кг", "0.5 квадрат", "1 кг стандарт", "1 кг плоский", "2 кг квадрат", "2 кг плоские", "5 кг"];
+      let volumes = ["0.5 кг", "0.5 квадрат", "1 кг стандарт", "1 кг плоский", "2 кг квадрат", "2 кг плоские", "3 кг квадрат", "3 кг плоские", "5 кг"];
       
       for (let i = 1; i <= 7; i++) {
         let count = document.getElementById('total' + i).textContent;
