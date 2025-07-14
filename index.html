@@ -105,9 +105,9 @@
           <tr><td>1 кг плоский</td><td><input type="tel" inputmode="tel" id="box4" oninput="updateTotal()"></td><td><span id="total4" style="font-weight: bold;">0</span></td></tr>
           <tr><td>2 кг квадрат</td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="total5" style="font-weight: bold;">0</span></td></tr>
           <tr><td>2 кг плоские</td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="total6" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>3 кг квадрат</td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="tota17" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>3 кг плоские</td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="tota18" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>5 кг</td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="tota19" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>3 кг квадрат</td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="tota17" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>3 кг плоские</td><td><input type="tel" inputmode="tel" id="box8" oninput="updateTotal()"></td><td><span id="tota18" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>5 кг</td><td><input type="tel" inputmode="tel" id="box9" oninput="updateTotal()"></td><td><span id="tota19" style="font-weight: bold;">0</span></td></tr>
     </tbody>
   </table>
 
@@ -132,7 +132,7 @@
       document.getElementById('counting').style.display = 'block';
     });
     function updateTotal() {
-      for (let i = 1; i <= 7; i++) {
+      for (let i = 1; i <= 9; i++) {
         let boxValue = document.getElementById('box' + i).value;
         if (boxValue.trim() !== '') {
           try {
@@ -150,13 +150,13 @@
     }
 
     function saveToLocalStorage() {
-      for (let i = 1; i <= 7; i++) {
+      for (let i = 1; i <= 9; i++) {
         localStorage.setItem('box' + i, document.getElementById('box' + i).value);
       }
     }
 
     function loadFromLocalStorage() {
-      for (let i = 1; i <= 7; i++) {
+      for (let i = 1; i <= 9; i++) {
         let savedValue = localStorage.getItem('box' + i);
         if (savedValue !== null) {
           document.getElementById('box' + i).value = savedValue;
@@ -166,7 +166,7 @@
     }
 
     function clearFields() {
-      for (let i = 1; i <= 7; i++) {
+      for (let i = 1; i <= 9; i++) {
         document.getElementById('box' + i).value = '';
         document.getElementById('total' + i).textContent = '0';
         localStorage.removeItem('box' + i);
@@ -177,7 +177,7 @@
       let message = "";
       let volumes = ["0.5 кг", "0.5 квадрат", "1 кг стандарт", "1 кг плоский", "2 кг квадрат", "2 кг плоские", "3 кг квадрат", "3 кг плоские", "5 кг"];
       
-      for (let i = 1; i <= 7; i++) {
+      for (let i = 1; i <= 9; i++) {
         let count = document.getElementById('total' + i).textContent;
         if (count > 0) {
           message += `📦 ${volumes[i-1]} - ${count}\n`;
