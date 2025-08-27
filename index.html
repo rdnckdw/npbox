@@ -100,14 +100,14 @@
     </thead>
     <tbody id="table-body">
           <tr><td>1 кг плоская</td><td><input type="tel" inputmode="tel" id="box1" oninput="updateTotal()"></td><td><span id="total1" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>5 кг </td><td><input type="tel" inputmode="tel" id="box2" oninput="updateTotal()"></td><td><span id="total2" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>3 кг квадрат </td><td><input type="tel" inputmode="tel" id="box3" oninput="updateTotal()"></td><td><span id="total3" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>3 кг плоская </td><td><input type="tel" inputmode="tel" id="box4" oninput="updateTotal()"></td><td><span id="total4" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>2 кг плоская </td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="total5" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>2 кг квадрат </td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="total6" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>0,5 кг плоская </td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="total7" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>1 кг квадрат </td><td><input type="tel" inputmode="tel" id="box8" oninput="updateTotal()"></td><td><span id="total8" style="font-weight: bold;">0</span></td></tr>
-          <tr><td>0,5 квадрат </td><td><input type="tel" inputmode="tel" id="box9" oninput="updateTotal()"></td><td><span id="total9" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>5 кг</td><td><input type="tel" inputmode="tel" id="box2" oninput="updateTotal()"></td><td><span id="total2" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>3 кг квадрат</td><td><input type="tel" inputmode="tel" id="box3" oninput="updateTotal()"></td><td><span id="total3" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>3 кг плоская</td><td><input type="tel" inputmode="tel" id="box4" oninput="updateTotal()"></td><td><span id="total4" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>2 кг плоская</td><td><input type="tel" inputmode="tel" id="box5" oninput="updateTotal()"></td><td><span id="total5" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>2 кг квадрат</td><td><input type="tel" inputmode="tel" id="box6" oninput="updateTotal()"></td><td><span id="total6" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>0,5 кг плоская</td><td><input type="tel" inputmode="tel" id="box7" oninput="updateTotal()"></td><td><span id="total7" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>1 кг квадрат</td><td><input type="tel" inputmode="tel" id="box8" oninput="updateTotal()"></td><td><span id="total8" style="font-weight: bold;">0</span></td></tr>
+          <tr><td>0,5 квадрат</td><td><input type="tel" inputmode="tel" id="box9" oninput="updateTotal()"></td><td><span id="total9" style="font-weight: bold;">0</span></td></tr>
     </tbody>
   </table>
 
@@ -175,7 +175,7 @@
 
     function sendToTelegram() {
       let message = "";
-      let volumes = ["1 кг плоская ", "5 кг ", 3 кг квадрат ", "3 кг плоская ", "2 кг плоская ", "2 кг квадрат ", "0,5 кг плоская ", "1 кг квадрат ", "0,5 квадрат "];
+      let volumes = ["1 кг плоская", "5 кг", 3 кг квадрат", "3 кг плоская", "2 кг плоская", "2 кг квадрат", "0,5 кг плоская" , "1 кг квадрат", "0,5 квадрат"];
       
       for (let i = 1; i <= 9; i++) {
         let count = document.getElementById('total' + i).textContent;
